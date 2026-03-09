@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple-Shop Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        .produto { background: white; padding: 15px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .btn-vender { background-color: #28a745; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
+        .btn-deletar { background-color: #dc3545; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
+        button:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <h1>🛒 Painel Simple-Shop</h1>
+    <div id="lista-produtos">Carregando produtos...</div>
+
+    <script>
+        // Função para carregar os produtos do banco (GET)
+        async function carregarProdutos() {
+            const response = await fetch('/produtos');
+            const produtos = await response.json();
+            
+            const divLista = document.getElementById('lista-produtos');
+            divLista.innerHTML = '';
+
+            if (!produtos || produtos.length === 0) {
+                divLista.innerHTML = '<p>Nenhum produto no estoque.</p>';
+                return;
+            }
+
+            produtos.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'produto';
+                item.innerHTML = `
+                    <div>
+                        <strong>ID ${p.id} - ${p.nome}</strong><br>
+                        Estoque: ${p.quantidade} unidades | Preço: R$ ${p.preco}
+                    </div>
+                    <div>
+                        <button class="btn-vender" onclick="vender(${p.id})">Vender 1 un.</button>
+                        <button class="btn-deletar" onclick="deletar(${p.id})">Deletar</button>
+                    </div>
+                `;
+                divLista.appendChild(item);
+            });
+        }
+
+        // Função para vender um item (POST)
+        async function vender(id) {
+            const response = await fetch('/produtos/vender', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, quantidade: 1 })
+            });
+
+            if (response.ok) {
+                carregarProdutos(); // Recarrega a tela para atualizar o estoque
+            } else {
+                alert('Erro ao vender. Verifique se há estoque.');
+            }
+        }
+
+        // Função para remover um item (POST)
+        async function deletar(id) {
+            if (!confirm('Tem certeza que deseja deletar este produto?')) return;
+
+            const response = await fetch('/produtos/deletar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+
+            if (response.ok) {
+                carregarProdutos(); // Recarrega a tela
+            } else {
+                alert('Erro ao deletar produto.');
+            }
+        }
+
+        // Carrega a lista ao abrir a página
+        carregarProdutos();
+    </script>
+</body>
+</html>

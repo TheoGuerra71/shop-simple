@@ -1,0 +1,7 @@
+# Arquivos compilados
+simple-shop
+*.exe
+
+# Pastas do SO
+.DS_Store
+.vscode/
