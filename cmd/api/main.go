@@ -10,31 +10,60 @@ import (
 )
 
 func main() {
-	// Lembre de usar a sua senha do PostgreSQL
+	// 1. Configuração do Banco
 	connStr := "user=postgres password=admin dbname=simple_shop host=localhost sslmode=disable"
-
 	db, err := database.Conectar(connStr)
 	if err != nil {
 		log.Fatal("Falha crítica no banco:", err)
 	}
 	defer db.Close()
 
-	h := &handlers.ProdutoHandler{DB: db}
+	// 2. Inicialização dos Controladores (Handlers)
+	hProdutos := &handlers.ProdutoHandler{DB: db}
+	hLoja := &handlers.LojaHandler{DB: db}   // Requer o arquivo loja.go criado
+	hFiado := &handlers.FiadoHandler{DB: db} // Requer o arquivo fiado.go criado
 
-	// 1. ROTAS DA API (O motor do backend)
-	http.HandleFunc("/produtos", h.ListarProdutos)
-	http.HandleFunc("/produtos/vender", h.Vender)
-	http.HandleFunc("/produtos/deletar", h.Deletar)
+	// ==========================================
+	// MAPEAMENTO DE ROTAS (O mapa do sistema)
+	// ==========================================
 
-	// 2. ROTA DO FRONT-END (A carroceria visual)
-	// Isso diz ao Go para servir os arquivos da pasta "static" quando acessarmos a raiz do site "/"
+	// Aba 1: Estoque e Vendas
+	http.HandleFunc("/produtos", hProdutos.ListarProdutos)
+	http.HandleFunc("/produtos/novo", hProdutos.Criar)
+	http.HandleFunc("/produtos/vender", hProdutos.Vender)
+	http.HandleFunc("/produtos/deletar", hProdutos.Deletar)
+
+	// Aba 2: Minha Loja (Configurações e Tarefas)
+	http.HandleFunc("/loja/config", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			hLoja.ObterConfig(w, r)
+		} else {
+			hLoja.AtualizarConfig(w, r)
+		}
+	})
+	http.HandleFunc("/loja/tarefas", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			hLoja.ListarTarefas(w, r)
+		} else {
+			hLoja.CriarTarefa(w, r)
+		}
+	})
+
+	// Aba 3: Caderno de Fiado
+	http.HandleFunc("/clientes/novo", hFiado.CadastrarCliente)
+	http.HandleFunc("/fiados", hFiado.ListarFiados)
+	http.HandleFunc("/fiados/novo", hFiado.NovoFiado)
+	http.HandleFunc("/fiados/pagar", hFiado.DarBaixa)
+
+	// ROTA DO FRONT-END HTML
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
-	fmt.Println("🚀 Servidor online!")
-	fmt.Println("👉 Acesse a interface visual em: http://localhost:8080")
-	fmt.Println("👉 API de dados em: http://localhost:8080/produtos")
+	// ==========================================
+	fmt.Println("🚀 Backend Completo Online em http://localhost:8080")
+	fmt.Println("📦 Modos ativos: Estoque | Minha Loja | Caderno de Fiado")
 
+	// Inicia o servidor e libera a porta caso falhe
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("Servidor parou:", err)
+		log.Fatal("Servidor parou. Use 'fuser -k 8080/tcp' se a porta estiver travada. Erro:", err)
 	}
 }
