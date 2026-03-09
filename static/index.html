@@ -2,85 +2,409 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Simple-Shop Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Shop Simple</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        h1 { color: #333; }
-        .produto { background: white; padding: 15px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .btn-vender { background-color: #28a745; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
-        .btn-deletar { background-color: #dc3545; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 3px; }
+        /* =========================================
+           VARIÁVEIS DE COR E ESTILO GLOBAL
+           ========================================= */
+        :root {
+            --bg-color: #f4f7f6;
+            --sidebar-bg: #2c3e50;
+            --text-main: #333;
+            --text-light: #ecf0f1;
+            --primary: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* =========================================
+           SIDEBAR (MENU LATERAL)
+           ========================================= */
+        .sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            padding: 15px 20px;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .menu-btn:hover, .menu-btn.active {
+            background-color: var(--primary);
+            border-left: 5px solid #2980b9;
+        }
+
+        /* =========================================
+           ÁREA PRINCIPAL E ABAS (TABS)
+           ========================================= */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none; /* Esconde todas as abas por padrão */
+            animation: fadeIn 0.4s;
+        }
+
+        .tab-content.active {
+            display: block; /* Mostra apenas a aba ativa */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* =========================================
+           CARDS E BOTÕES
+           ========================================= */
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .produto-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: 0.2s;
+        }
+        
         button:hover { opacity: 0.8; }
+        .btn-success { background-color: var(--success); }
+        .btn-danger { background-color: var(--danger); }
+        .btn-primary { background-color: var(--primary); }
+
+        /* =========================================
+           MODAL (POP-UP DE VENDA)
+           ========================================= */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+        }
+
+        .modal-box input {
+            width: 80%;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 16px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <h1>🛒 Painel Simple-Shop</h1>
-    <div id="lista-produtos">Carregando produtos...</div>
+    <nav class="sidebar">
+        <h2>🛒 Shop Simple</h2>
+        <button class="menu-btn active" onclick="mudarAba('estoque', this)">📦 Estoque</button>
+        <button class="menu-btn" onclick="mudarAba('fiados', this)">📒 Caderno de Fiado</button>
+        <button class="menu-btn" onclick="mudarAba('loja', this)">⚙️ Minha Loja</button>
+    </nav>
+
+    <main class="main-content">
+        
+        <section id="estoque" class="tab-content active">
+            <h1>Controle de Estoque</h1>
+            <div class="card">
+                <h3>Novo Produto</h3>
+                <input type="text" id="novo-nome" placeholder="Nome do Produto">
+                <input type="number" id="novo-preco" placeholder="Preço (R$)" step="0.01">
+                <input type="number" id="novo-qtd" placeholder="Quantidade">
+                <button class="btn-primary" onclick="cadastrarProduto()">Adicionar</button>
+            </div>
+
+            <div class="card" id="lista-produtos">
+                </div>
+        </section>
+
+        <section id="fiados" class="tab-content">
+            <h1>Caderno de Fiado</h1>
+            <div class="card">
+                <p>Em breve: A lista de clientes e dívidas aparecerá aqui.</p>
+            </div>
+        </section>
+
+        <section id="loja" class="tab-content">
+            <h1>Minha Loja</h1>
+            
+            <div class="card">
+                <h3>Configurações</h3>
+                <input type="text" id="loja-nome" placeholder="Nome da Loja"><br><br>
+                <input type="text" id="loja-whats" placeholder="WhatsApp"><br><br>
+                <input type="text" id="loja-insta" placeholder="Instagram"><br><br>
+                <button class="btn-primary" onclick="salvarConfig()">Salvar Alterações</button>
+            </div>
+
+            <div class="card">
+                <h3>To-Do List (Tarefas)</h3>
+                <input type="text" id="nova-tarefa" placeholder="Nova tarefa...">
+                <button class="btn-primary" onclick="addTarefa()">Adicionar</button>
+                <ul id="lista-tarefas" style="margin-top: 20px;"></ul>
+            </div>
+        </section>
+
+    </main>
+
+    <div class="modal-overlay" id="modal-venda">
+        <div class="modal-box">
+            <h2 id="modal-produto-nome">Produto</h2>
+            <p>Preço Unitário: R$ <span id="modal-produto-preco">0.00</span></p>
+            
+            <label>Quantas unidades?</label>
+            <input type="number" id="modal-qtd-venda" value="1" min="1" oninput="calcularTotal()">
+            
+            <h3 style="color: var(--primary);">Total: R$ <span id="modal-total">0.00</span></h3>
+            
+            <button class="btn-danger" onclick="fecharModal()">Cancelar</button>
+            <button class="btn-success" onclick="confirmarVenda()">Confirmar Venda</button>
+        </div>
+    </div>
 
     <script>
-        // Função para carregar os produtos do banco (GET)
-        async function carregarProdutos() {
-            const response = await fetch('/produtos');
-            const produtos = await response.json();
-            
-            const divLista = document.getElementById('lista-produtos');
-            divLista.innerHTML = '';
+        // Variáveis globais para o Modal
+        let produtoVendaId = null;
+        let produtoVendaPreco = 0;
 
+        // ==========================================
+        // LÓGICA DE NAVEGAÇÃO (TABS)
+        // ==========================================
+        function mudarAba(idAba, botaoClicado) {
+            // Esconde todas as abas
+            document.querySelectorAll('.tab-content').forEach(aba => aba.classList.remove('active'));
+            // Tira o destaque de todos os botões
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Ativa a aba e o botão selecionado
+            document.getElementById(idAba).classList.add('active');
+            botaoClicado.classList.add('active');
+
+            // Carrega os dados dependendo da aba
+            if (idAba === 'estoque') carregarProdutos();
+            if (idAba === 'loja') { carregarConfig(); carregarTarefas(); }
+        }
+
+        // ==========================================
+        // LÓGICA DO ESTOQUE
+        // ==========================================
+        async function carregarProdutos() {
+            const res = await fetch('/produtos');
+            const produtos = await res.json();
+            const divLista = document.getElementById('lista-produtos');
+            
             if (!produtos || produtos.length === 0) {
-                divLista.innerHTML = '<p>Nenhum produto no estoque.</p>';
+                divLista.innerHTML = '<p>Nenhum produto cadastrado.</p>';
                 return;
             }
 
+            divLista.innerHTML = '';
             produtos.forEach(p => {
-                const item = document.createElement('div');
-                item.className = 'produto';
-                item.innerHTML = `
-                    <div>
-                        <strong>ID ${p.id} - ${p.nome}</strong><br>
-                        Estoque: ${p.quantidade} unidades | Preço: R$ ${p.preco}
-                    </div>
-                    <div>
-                        <button class="btn-vender" onclick="vender(${p.id})">Vender 1 un.</button>
-                        <button class="btn-deletar" onclick="deletar(${p.id})">Deletar</button>
+                divLista.innerHTML += `
+                    <div class="produto-item">
+                        <div>
+                            <strong>${p.nome}</strong><br>
+                            <small>Estoque: ${p.quantidade} un | R$ ${p.preco.toFixed(2)}</small>
+                        </div>
+                        <div>
+                            <button class="btn-success" onclick="abrirModal(${p.id}, '${p.nome}', ${p.preco}, ${p.quantidade})">Vender</button>
+                            <button class="btn-danger" onclick="deletarProduto(${p.id})">Apagar</button>
+                        </div>
                     </div>
                 `;
-                divLista.appendChild(item);
             });
         }
 
-        // Função para vender um item (POST)
-        async function vender(id) {
-            const response = await fetch('/produtos/vender', {
+        async function cadastrarProduto() {
+            const nome = document.getElementById('novo-nome').value;
+            const preco = parseFloat(document.getElementById('novo-preco').value);
+            const qtd = parseInt(document.getElementById('novo-qtd').value);
+
+            if (!nome || !preco || !qtd) return alert("Preencha todos os campos!");
+
+            await fetch('/produtos/novo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id, quantidade: 1 })
+                body: JSON.stringify({ nome: nome, preco: preco, quantidade: qtd })
             });
-
-            if (response.ok) {
-                carregarProdutos(); // Recarrega a tela para atualizar o estoque
-            } else {
-                alert('Erro ao vender. Verifique se há estoque.');
-            }
+            
+            // Limpa os campos e recarrega
+            document.getElementById('novo-nome').value = '';
+            document.getElementById('novo-preco').value = '';
+            document.getElementById('novo-qtd').value = '';
+            carregarProdutos();
         }
 
-        // Função para remover um item (POST)
-        async function deletar(id) {
-            if (!confirm('Tem certeza que deseja deletar este produto?')) return;
-
-            const response = await fetch('/produtos/deletar', {
+        async function deletarProduto(id) {
+            if (!confirm('Tem certeza? Isso apagará o produto para sempre.')) return;
+            await fetch('/produtos/deletar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: id })
             });
+            carregarProdutos();
+        }
 
-            if (response.ok) {
-                carregarProdutos(); // Recarrega a tela
+        // ==========================================
+        // LÓGICA DO MODAL DE VENDA INTELIGENTE
+        // ==========================================
+        function abrirModal(id, nome, preco, estoqueAtual) {
+            if (estoqueAtual <= 0) {
+                alert("Produto sem estoque!");
+                return;
+            }
+            produtoVendaId = id;
+            produtoVendaPreco = preco;
+
+            document.getElementById('modal-produto-nome').innerText = nome;
+            document.getElementById('modal-produto-preco').innerText = preco.toFixed(2);
+            
+            const inputQtd = document.getElementById('modal-qtd-venda');
+            inputQtd.value = 1;
+            inputQtd.max = estoqueAtual; // Impede vender mais do que tem
+
+            calcularTotal();
+            document.getElementById('modal-venda').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-venda').style.display = 'none';
+        }
+
+        function calcularTotal() {
+            const qtd = parseInt(document.getElementById('modal-qtd-venda').value) || 0;
+            const total = qtd * produtoVendaPreco;
+            document.getElementById('modal-total').innerText = total.toFixed(2);
+        }
+
+        async function confirmarVenda() {
+            const qtd = parseInt(document.getElementById('modal-qtd-venda').value);
+            
+            const res = await fetch('/produtos/vender', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: produtoVendaId, quantidade: qtd })
+            });
+
+            if (res.ok) {
+                fecharModal();
+                carregarProdutos(); // Atualiza a tela na hora
             } else {
-                alert('Erro ao deletar produto.');
+                alert("Erro ao realizar a venda. Verifique o estoque.");
             }
         }
 
-        // Carrega a lista ao abrir a página
+        // ==========================================
+        // LÓGICA DA MINHA LOJA
+        // ==========================================
+        async function carregarConfig() {
+            const res = await fetch('/loja/config');
+            if (res.ok) {
+                const config = await res.json();
+                document.getElementById('loja-nome').value = config.nome_loja;
+                document.getElementById('loja-whats').value = config.whatsapp;
+                document.getElementById('loja-insta').value = config.instagram;
+            }
+        }
+
+        async function salvarConfig() {
+            const dados = {
+                nome_loja: document.getElementById('loja-nome').value,
+                whatsapp: document.getElementById('loja-whats').value,
+                instagram: document.getElementById('loja-insta').value
+            };
+            await fetch('/loja/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+            alert("Configurações Salvas!");
+        }
+
+        async function carregarTarefas() {
+            const res = await fetch('/loja/tarefas');
+            const tarefas = await res.json();
+            const lista = document.getElementById('lista-tarefas');
+            lista.innerHTML = '';
+            
+            if(tarefas) {
+                tarefas.forEach(t => {
+                    lista.innerHTML += `<li>${t.descricao}</li>`;
+                });
+            }
+        }
+
+        async function addTarefa() {
+            const desc = document.getElementById('nova-tarefa').value;
+            if(!desc) return;
+            
+            await fetch('/loja/tarefas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao: desc })
+            });
+            document.getElementById('nova-tarefa').value = '';
+            carregarTarefas();
+        }
+
+        // Inicia a aplicação carregando o estoque
         carregarProdutos();
     </script>
 </body>
