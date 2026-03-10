@@ -2,41 +2,183 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Meu PDV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - Boutique ERP</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        // Redireciona se já estiver logado
+        if (localStorage.getItem('token')) window.location.href = '/';
+
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'], 
+                        serif: ['Playfair Display', 'serif'] 
+                    }, 
+                    colors: { 
+                        brand: { 500: '#1c1917', 600: '#0c0a09' } 
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.8s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
+                    }
+                } 
+            } 
+        }
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Inter:wght@400;600;800&display=swap');
+        body { -webkit-tap-highlight-color: transparent; background-color: #faf9f6; color: #1c1917; }
+        
+        /* Loading Spinner Animado */
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body class="bg-gray-100 h-screen flex items-center justify-center p-6">
-    <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl text-center">
-        <h1 class="text-3xl font-black text-gray-800 mb-2">Meu PDV</h1>
-        <p class="text-gray-400 font-medium mb-8">Faça login para continuar</p>
+<body class="h-screen w-full flex overflow-hidden">
+
+    <div class="w-full lg:w-1/2 h-full flex flex-col justify-center px-8 sm:px-16 md:px-24 relative bg-[#faf9f6] z-10 animate-fade-in">
         
-        <div class="space-y-4">
-            <input type="email" id="email" placeholder="E-mail" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500">
-            <input type="password" id="pass" placeholder="Senha" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500">
-            <button onclick="fazerLogin()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-all">Entrar</button>
+        <div class="mb-10">
+            <div class="w-14 h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <i class="ph-fill ph-storefront text-3xl"></i>
+            </div>
+            <h1 class="font-serif text-4xl text-stone-900 mb-2 tracking-tight">Acesso Restrito</h1>
+            <p class="text-stone-500 text-sm font-medium">Insira suas credenciais para gerenciar a operação.</p>
         </div>
+
+        <form id="form-login" onsubmit="realizarLogin(event)" class="space-y-6">
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">E-mail corporativo</label>
+                <div class="relative">
+                    <i class="ph-fill ph-envelope-simple absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-xl"></i>
+                    <input type="email" id="email" required placeholder="admin@boutique.com" class="w-full pl-12 pr-4 py-4 bg-white border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-100 transition-all">
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Senha de segurança</label>
+                <div class="relative">
+                    <i class="ph-fill ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-xl"></i>
+                    <input type="password" id="senha" required placeholder="••••••••" class="w-full pl-12 pr-12 py-4 bg-white border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-100 transition-all">
+                    <button type="button" onclick="toggleSenha()" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 transition-colors">
+                        <i class="ph ph-eye text-xl" id="icone-olho"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="msg-erro" class="hidden bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-3">
+                <i class="ph-fill ph-warning-circle text-xl"></i>
+                <span id="texto-erro">E-mail ou senha incorretos.</span>
+            </div>
+
+            <button type="submit" id="btn-submit" class="w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-xl shadow-stone-900/20 hover:bg-stone-800 transition-all active:scale-95 flex justify-center items-center gap-2 mt-4">
+                <span id="btn-texto">Entrar na minha loja</span>
+                <i class="ph-bold ph-arrow-right" id="btn-icone"></i>
+                <div id="btn-spinner" class="spinner hidden"></div>
+            </button>
+        </form>
+
+        <div class="absolute bottom-8 left-8 right-8 text-center lg:text-left">
+            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center justify-center lg:justify-start gap-1">
+                <i class="ph-fill ph-shield-check text-emerald-500 text-sm"></i> Conexão Criptografada
+            </p>
+        </div>
+    </div>
+
+    <div class="hidden lg:block lg:w-1/2 relative bg-stone-200">
+        <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover object-center">
         
-        <p class="mt-8 text-sm text-gray-400">Não tem conta? <span class="text-emerald-500 font-bold">Cadastre-se</span></p>
+        <div class="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent"></div>
+        
+        <div class="absolute inset-0 flex flex-col justify-end p-16 text-white pb-24">
+            <h2 class="font-serif text-5xl mb-6 leading-tight">Gestão inteligente<br>para negócios reais.</h2>
+            <p class="text-stone-300 text-lg max-w-md font-light">Controle seu estoque, analise o fluxo de caixa e tome decisões baseadas em dados com o seu novo Agente Financeiro.</p>
+        </div>
     </div>
 
     <script>
-        async function fazerLogin() {
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('pass').value;
-
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem('token', data.token); // Guarda o crachá no navegador
-                window.location.href = '/index.html'; // Vai pro painel
+        // Mostrar/Ocultar Senha
+        function toggleSenha() {
+            const input = document.getElementById('senha');
+            const icone = document.getElementById('icone-olho');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icone.classList.replace('ph-eye', 'ph-eye-slash');
             } else {
-                alert("Login falhou! Verifique os dados.");
+                input.type = 'password';
+                icone.classList.replace('ph-eye-slash', 'ph-eye');
+            }
+        }
+
+        // Lógica de Login
+        async function realizarLogin(event) {
+            event.preventDefault(); // Impede a página de recarregar
+            
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            
+            const btnSubmit = document.getElementById('btn-submit');
+            const btnTexto = document.getElementById('btn-texto');
+            const btnIcone = document.getElementById('btn-icone');
+            const btnSpinner = document.getElementById('btn-spinner');
+            const msgErro = document.getElementById('msg-erro');
+
+            // UI: Inicia Carregamento
+            msgErro.classList.add('hidden');
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('opacity-80', 'cursor-wait');
+            btnTexto.innerText = "Autenticando...";
+            btnIcone.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, senha: senha })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Sucesso: Salva o Token JWT
+                    localStorage.setItem('token', data.token);
+                    
+                    // UI: Sucesso visual rápido antes de redirecionar
+                    btnSpinner.classList.add('hidden');
+                    btnTexto.innerText = "Acesso Permitido";
+                    btnSubmit.classList.replace('bg-stone-900', 'bg-emerald-600');
+                    
+                    // Redireciona para o Painel CFO
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 500);
+                } else {
+                    // Falha no Login
+                    throw new Error("Credenciais inválidas");
+                }
+            } catch (error) {
+                // UI: Mostra erro e reseta botão
+                msgErro.classList.remove('hidden');
+                
+                // Animação de tremor no formulário (Shake)
+                const form = document.getElementById('form-login');
+                form.classList.add('translate-x-2');
+                setTimeout(() => form.classList.replace('translate-x-2', '-translate-x-2'), 100);
+                setTimeout(() => form.classList.replace('-translate-x-2', 'translate-x-0'), 200);
+
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-80', 'cursor-wait');
+                btnTexto.innerText = "Entrar no Terminal";
+                btnIcone.classList.remove('hidden');
+                btnSpinner.classList.add('hidden');
             }
         }
     </script>

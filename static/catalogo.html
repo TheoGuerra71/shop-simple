@@ -2,53 +2,195 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Catálogo Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* Fonte Serifada para dar o tom de Grife (Estilo Farm) */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&family=Inter:wght@300;400;600&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; }
+        h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
+        
+        /* Oculta scrollbar mas mantém rolagem */
+        ::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .produto-img { object-fit: cover; width: 100%; height: 350px; background-color: #f5f5f4; }
+        .btn-brand { transition: all 0.3s ease; }
+        .btn-brand:active { transform: scale(0.98); }
+    </style>
 </head>
-<body class="bg-gray-50 pb-10">
+<body class="pb-24">
 
-    <header class="bg-white p-6 text-center shadow-sm">
-        <h1 id="store-name" class="text-2xl font-black text-gray-800 uppercase">Minha Loja</h1>
-        <p class="text-gray-400 text-sm">Escolha seus produtos e peça pelo WhatsApp</p>
+    <header class="py-8 px-6 text-center border-b border-stone-200 bg-white sticky top-0 z-40">
+        <h1 id="store-name" class="text-3xl font-bold tracking-tight text-stone-900 mb-2">Boutique</h1>
+        <div class="flex items-center justify-center gap-4 text-stone-500">
+            <a id="link-insta" href="#" target="_blank" class="hidden flex items-center gap-1 text-xs hover:text-stone-900 transition-colors"><i class="ph ph-instagram-logo text-lg"></i> <span id="txt-insta">Instagram</span></a>
+        </div>
     </header>
 
-    <main class="p-6 max-w-lg mx-auto space-y-4" id="lista-catalogo">
-        </main>
+    <main class="max-w-md mx-auto w-full pt-6 px-4">
+        <div class="flex gap-3 overflow-x-auto hide-scroll pb-6 mb-2" id="filtro-categorias">
+            </div>
+
+        <div id="grid-produtos" class="grid grid-cols-1 gap-10">
+            <div class="text-center py-20 text-stone-400">
+                <i class="ph ph-spinner-gap animate-spin text-3xl mb-2"></i>
+                <p>Preparando a vitrine...</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="barra-carrinho" class="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-4 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div>
+                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Sua Sacola</p>
+                <p class="text-lg font-bold text-stone-900"><span id="qtd-sacola">0</span> itens <span class="text-sm font-normal text-stone-500">(R$ <span id="total-sacola">0,00</span>)</span></p>
+            </div>
+            <button onclick="enviarPedido()" id="btn-comprar" class="btn-brand text-white px-6 py-3 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
+                Pedir via WhatsApp <i class="ph-fill ph-whatsapp-logo text-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <footer class="text-center py-12 px-6 text-stone-400">
+        <p class="serif italic text-lg mb-2" id="msg-suporte">Estamos aqui para você.</p>
+        <p class="text-xs">© <span id="ano-footer">2026</span>. Todos os direitos reservados.</p>
+    </footer>
 
     <script>
-        async function carregarCatalogo() {
-            // Puxa as configs da loja (pra saber o WhatsApp)
-            const resLoja = await fetch('/loja/config');
-            const loja = await resLoja.json();
-            document.getElementById('store-name').innerText = loja.nome_loja;
+        let loja = {};
+        let produtos = [];
+        let carrinho = [];
 
-            // Puxa os produtos
-            const resProd = await fetch('/api/catalogo');
-            const produtos = await resProd.json();
-            const container = document.getElementById('lista-catalogo');
+        async function initLoja() {
+            // 1. Busca configurações da loja
+            const resLoja = await fetch('/api/loja');
+            if(resLoja.ok) {
+                loja = await resLoja.json();
+                document.getElementById('store-name').innerText = loja.nome_loja || "Nossa Loja";
+                if(loja.msg_suporte) document.getElementById('msg-suporte').innerText = loja.msg_suporte;
+                
+                // Aplica a cor customizada no botão do carrinho
+                if(loja.cor_hex) {
+                    document.getElementById('btn-comprar').style.backgroundColor = loja.cor_hex;
+                }
 
-            produtos.forEach(p => {
-                const msg = encodeURIComponent(`Olá! Gostaria de encomendar: ${p.nome}`);
-                const linkWhats = `https://wa.me/${loja.whatsapp}?text=${msg}`;
+                if(loja.instagram) {
+                    const btnInsta = document.getElementById('link-insta');
+                    btnInsta.classList.remove('hidden');
+                    btnInsta.href = `https://instagram.com/${loja.instagram.replace('@','')}`;
+                    document.getElementById('txt-insta').innerText = loja.instagram;
+                }
+            }
+            document.getElementById('ano-footer').innerText = new Date().getFullYear();
 
-                container.innerHTML += `
-                <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div class="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
-                        <i class="ph ph-package text-3xl"></i>
+            // 2. Busca os Produtos (Apenas os com estoque > 0)
+            const resProd = await fetch('/api/produtos');
+            if(resProd.ok) {
+                const todos = await resProd.json();
+                produtos = todos.filter(p => p.quantidade > 0);
+                renderizarCategorias();
+                renderizarProdutos('Todos');
+            }
+        }
+
+        function renderizarCategorias() {
+            const catContainer = document.getElementById('filtro-categorias');
+            const categorias = ['Todos', ...new Set(produtos.map(p => p.categoria || 'Geral'))];
+            
+            catContainer.innerHTML = '';
+            categorias.forEach(cat => {
+                catContainer.innerHTML += `
+                <button onclick="renderizarProdutos('${cat}')" class="flex-shrink-0 px-5 py-2 rounded-full border border-stone-300 text-xs font-bold text-stone-600 hover:border-stone-900 hover:text-stone-900 transition-colors focus:bg-stone-900 focus:text-white">
+                    ${cat}
+                </button>`;
+            });
+        }
+
+        function renderizarProdutos(filtroCat) {
+            const grid = document.getElementById('grid-produtos');
+            grid.innerHTML = '';
+            
+            const exibicao = filtroCat === 'Todos' ? produtos : produtos.filter(p => (p.categoria || 'Geral') === filtroCat);
+
+            if(exibicao.length === 0) {
+                grid.innerHTML = `<p class="text-center text-stone-500 py-10">Nenhum produto disponível nesta categoria.</p>`;
+                return;
+            }
+
+            exibicao.forEach(p => {
+                // Placeholder de imagem de luxo genérica se não houver URL
+                const imgUrl = p.url_imagem || 'https://images.unsplash.com/photo-1618220179428-22790b461013?w=500&q=80';
+                
+                grid.innerHTML += `
+                <div class="group cursor-pointer">
+                    <div class="overflow-hidden rounded-2xl mb-4 relative">
+                        <img src="${imgUrl}" alt="${p.nome}" class="produto-img group-hover:scale-105 transition-transform duration-700">
+                        <button onclick="addCarrinho(${p.id}, '${p.nome}', ${p.preco})" class="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-stone-900 w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform">
+                            <i class="ph ph-bag text-xl"></i>
+                        </button>
                     </div>
-                    <div class="flex-1">
-                        <h4 class="font-black text-gray-800">${p.nome}</h4>
-                        <p class="text-emerald-500 font-black">R$ ${p.preco.toFixed(2)}</p>
-                        <a href="${linkWhats}" target="_blank" class="mt-2 inline-flex items-center text-xs font-bold text-white bg-emerald-500 px-4 py-2 rounded-full shadow-md active:scale-95 transition-transform">
-                            <i class="ph ph-whatsapp-logo mr-1 text-lg"></i> Pedir agora
-                        </a>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[10px] text-stone-400 font-bold uppercase tracking-widest mb-1">${p.categoria || 'Geral'}</p>
+                            <h3 class="serif text-xl text-stone-900">${p.nome}</h3>
+                        </div>
+                        <p class="font-bold text-stone-900">R$ ${p.preco.toFixed(2)}</p>
                     </div>
                 </div>`;
             });
         }
-        carregarCatalogo();
+
+        function addCarrinho(id, nome, preco) {
+            const item = carrinho.find(i => i.id === id);
+            if(item) { item.qtd++; } else { carrinho.push({ id, nome, preco, qtd: 1 }); }
+            atualizarBarra();
+            
+            // Feedback visual rápido
+            const btn = event.currentTarget;
+            btn.innerHTML = '<i class="ph-fill ph-check text-green-500 text-xl"></i>';
+            setTimeout(() => btn.innerHTML = '<i class="ph ph-bag text-xl"></i>', 1000);
+        }
+
+        function atualizarBarra() {
+            const barra = document.getElementById('barra-carrinho');
+            if(carrinho.length === 0) {
+                barra.classList.add('translate-y-full');
+                return;
+            }
+            
+            barra.classList.remove('translate-y-full');
+            
+            let totalQtd = 0;
+            let totalValor = 0;
+            carrinho.forEach(i => { totalQtd += i.qtd; totalValor += (i.preco * i.qtd); });
+            
+            document.getElementById('qtd-sacola').innerText = totalQtd;
+            document.getElementById('total-sacola').innerText = totalValor.toFixed(2);
+        }
+
+        function enviarPedido() {
+            if(!loja.whatsapp) return alert("Esta loja ainda não configurou o WhatsApp de vendas.");
+            
+            let texto = `Olá! Gostaria de fazer o seguinte pedido na *${loja.nome_loja}*:\n\n`;
+            let total = 0;
+            
+            carrinho.forEach(i => {
+                texto += `🛍️ ${i.qtd}x ${i.nome} - R$ ${(i.preco * i.qtd).toFixed(2)}\n`;
+                total += (i.preco * i.qtd);
+            });
+            
+            texto += `\n💰 *Total da Sacola: R$ ${total.toFixed(2)}*`;
+            
+            const numZap = loja.whatsapp.replace(/\D/g, '');
+            window.open(`https://wa.me/55${numZap}?text=${encodeURIComponent(texto)}`, '_blank');
+        }
+
+        // Start
+        initLoja();
     </script>
 </body>
 </html>

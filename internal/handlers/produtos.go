@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/theo-guerra/simple-shop/internal/models"
@@ -13,7 +12,7 @@ type ProdutoHandler struct {
 	DB *sql.DB
 }
 
-// ListarProdutos (GET) - Agora traz custo e estoque mínimo
+// ListarProdutos (GET)
 func (h *ProdutoHandler) ListarProdutos(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query("SELECT id, nome, preco, custo, quantidade, estoque_minimo, url_imagem FROM produtos ORDER BY id ASC")
 	if err != nil {
@@ -33,7 +32,7 @@ func (h *ProdutoHandler) ListarProdutos(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(produtos)
 }
 
-// Criar (POST) - Salva com os novos campos financeiros
+// Criar (POST)
 func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
 	var p models.ProdutoApp
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
@@ -41,31 +40,44 @@ func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `INSERT INTO produtos (nome, preco, custo, quantidade, estoque_minimo, url_imagem) 
-              VALUES ($1, $2, $3, $4, $5, $6)`
+	query := `INSERT INTO produtos (nome, preco, custo, quantidade, estoque_minimo, url_imagem) VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := h.DB.Exec(query, p.Nome, p.PrecoVenda, p.Custo, p.Quantidade, p.EstoqueMinimo, p.UrlImagem)
 	if err != nil {
 		http.Error(w, "Erro ao salvar produto", 500)
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
 }
 
-// Vender (POST) - A função mais importante: Baixa estoque + Gera Entrada no Caixa
+// Editar (POST)
+func (h *ProdutoHandler) Editar(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID     int     `json:"id"`
+		Nome   string  `json:"nome"`
+		Preco  float64 `json:"preco"`
+		Custo  float64 `json:"custo"`
+		Minimo int     `json:"estoque_minimo"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	_, err := h.DB.Exec("UPDATE produtos SET nome=$1, preco=$2, custo=$3, estoque_minimo=$4 WHERE id=$5", req.Nome, req.Preco, req.Custo, req.Minimo, req.ID)
+	if err != nil {
+		http.Error(w, "Erro ao atualizar", 500)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// Vender (POST) - A MÁGICA ACONTECE AQUI
 func (h *ProdutoHandler) Vender(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID         int `json:"id"`
 		Quantidade int `json:"quantidade"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Erro nos dados", 400)
-		return
-	}
+	json.NewDecoder(r.Body).Decode(&req)
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		http.Error(w, "Erro na transação", 500)
 		return
 	}
 
@@ -73,40 +85,30 @@ func (h *ProdutoHandler) Vender(w http.ResponseWriter, r *http.Request) {
 	var preco float64
 	var nome string
 
-	// Busca dados do produto
 	err = tx.QueryRow("SELECT quantidade, preco, nome FROM produtos WHERE id = $1", req.ID).Scan(&estoqueAtual, &preco, &nome)
-	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Produto não encontrado", 404)
-		return
-	}
-
-	if estoqueAtual < req.Quantidade {
+	if err != nil || estoqueAtual < req.Quantidade {
 		tx.Rollback()
 		http.Error(w, "Estoque insuficiente", 409)
 		return
 	}
 
-	// 1. Reduz o Estoque
-	_, err = tx.Exec("UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2", req.Quantidade, req.ID)
+	// 1. Reduz estoque E aumenta o ranking de "vendas_qtd" (Para o relatório de Mais Vendidos)
+	_, err = tx.Exec("UPDATE produtos SET quantidade = quantidade - $1, vendas_qtd = vendas_qtd + $1 WHERE id = $2", req.Quantidade, req.ID)
 	if err != nil {
 		tx.Rollback()
-		http.Error(w, "Erro ao atualizar estoque", 500)
 		return
 	}
 
-	// 2. Registra a ENTRADA no Caixa (Para o gráfico de lucro e vendas hoje)
-	valorTotal := preco * float64(req.Quantidade)
-	desc := fmt.Sprintf("Venda: %dx %s", req.Quantidade, nome)
-	_, err = tx.Exec("INSERT INTO caixa_movimentos (tipo, descricao, valor) VALUES ('ENTRADA', $1, $2)", desc, valorTotal)
-	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Erro ao registrar no caixa", 500)
-		return
-	}
+	// 2. Não precisamos mais lançar a entrada no caixa aqui, porque o Front-End vai mandar a forma de pagamento (Dinheiro, Pix) direto para o CaixaHandler.
 
 	tx.Commit()
-	w.WriteHeader(http.StatusOK)
+	// Retornamos os dados do produto para o Front-End montar o Recibo do WhatsApp!
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"produto": nome,
+		"preco":   preco,
+		"total":   preco * float64(req.Quantidade),
+	})
 }
 
 // Deletar (POST)
