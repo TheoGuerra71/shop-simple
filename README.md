@@ -1,78 +1,66 @@
-# 🛒 Shop-Simple (Gestão de Estoque Full-Stack)
+# 💼 Boutique ERP & Financial Dashboard
 
-Um sistema completo de gerenciamento de estoque e PDV (Ponto de Venda) desenvolvido em **Go (Golang)** e **PostgreSQL**, com uma interface web interativa. 
+Um sistema completo de Ponto de Venda (PDV), Gestão de Estoque e Inteligência de Negócios (BI) construído com **Go** e **PostgreSQL**. Desenhado para unir a potência de um terminal financeiro (wall-street style) com a elegância visual de uma marca de grife.
 
-Este projeto foi construído para demonstrar conceitos avançados de backend, incluindo **Transações ACID** no banco de dados, criação de uma API RESTful do zero (sem frameworks) e integração com um front-end em Vanilla JavaScript.
+## 🚀 Visão Geral
 
-## 🚀 Tecnologias Utilizadas
+Este projeto foi desenvolvido com a mentalidade de um Diretor Financeiro (CFO). Ele não apenas registra vendas, mas exige disciplina operacional (Trava de Abertura/Fechamento de Caixa), calcula patrimônio imobilizado em tempo real e projeta o fluxo de caixa através de gráficos interativos.
 
-* **Backend:** Go (Golang) - Roteamento nativo (`net/http`)
-* **Banco de Dados:** PostgreSQL (Driver: `lib/pq`)
-* **Frontend:** HTML5, CSS3, Vanilla JavaScript (Fetch API)
-* **Infraestrutura:** Linux (Ubuntu) / Git / GitHub
+Além do painel administrativo, o sistema gera automaticamente um **Catálogo Online** (Estilo E-commerce) personalizável para que o lojista receba pedidos direto no WhatsApp.
 
-## ✨ Funcionalidades (CRUD Completo)
+## ✨ Principais Funcionalidades
 
-- **Listagem (GET):** Visualização em tempo real de todos os produtos cadastrados e seus respectivos estoques.
-- **Cadastro (POST):** Inserção de novos itens na base de dados.
-- **Venda com Proteção de Estoque (POST):** Utilização de **Transações SQL** para garantir que o estoque seja reduzido com segurança. O sistema bloqueia vendas se o estoque for insuficiente.
-- **Remoção (DELETE):** Exclusão permanente de itens fora de linha.
+- **🔒 Trava Operacional de Caixa:** O sistema só opera após o registro do Fundo de Troco inicial, garantindo balanços perfeitos no fim do dia.
+- **📊 Business Intelligence (BI):** Dashboards interativos com Chart.js (Gráficos de linha de fluxo e barras comparativas de Receita vs Despesa).
+- **📦 Estoque Inteligente:** Filtro dinâmico por categorias, alertas automáticos de ruptura de estoque e cálculo do patrimônio imobilizado (Preço de Custo x Quantidade).
+- **📋 Logística e Checklist:** Sistema integrado de To-Do list para operações diárias (compras, contatos com fornecedores) salvo no *Local Storage*.
+- **📈 Exportação Contábil:** Geração de relatórios financeiros e extratos detalhados com exportação em um clique para planilhas `.csv`.
+- **🛍️ Catálogo Online (White-label):** Vitrine digital para clientes, onde o lojista pode alterar pelo painel a cor principal do tema, o nome e as redes sociais.
+- **📱 Integração WhatsApp:** Geração automática de recibos pós-venda enviados diretamente para o WhatsApp do cliente.
 
-## ⚙️ Arquitetura do Projeto
+## 🛠️ Tecnologias Utilizadas
 
-O código foi estruturado visando manutenibilidade e escalabilidade, separando as responsabilidades de forma clara:
+**Backend:**
+- [Go (Golang)](https://golang.org/) - Alta performance, tipagem forte e concorrência.
+- [PostgreSQL](https://www.postgresql.org/) - Banco de dados relacional robusto e seguro.
+- Arquitetura RESTful com autenticação JWT.
 
-    /shop-simple
-    ├── cmd/
-    │   └── api/
-    │       └── main.go         # Ponto de entrada, configuração do servidor e rotas
-    ├── internal/
-    │   ├── database/
-    │   │   └── db.go           # Gerenciamento da conexão com o PostgreSQL
-    │   ├── handlers/
-    │   │   └── produtos.go     # Regras de negócio, manipulação de JSON e Transações
-    │   └── models/
-    │       └── produto.go      # Estruturas de dados (Structs) e tags JSON
-    ├── static/
-    │   └── index.html          # Interface gráfica do usuário servida pelo Go
-    ├── go.mod                  # Gerenciador de dependências do Go
-    └── README.md               # Documentação do projeto
+**Frontend:**
+- HTML5 / Vanilla JS - Zero dependências pesadas (sem frameworks JS), focando em velocidade bruta.
+- [Tailwind CSS](https://tailwindcss.com/) - Estilização utility-first para um design elegante e responsivo (Desktop & Mobile).
+- [Chart.js](https://www.chartjs.org/) - Renderização de gráficos financeiros em tempo real.
+- [Phosphor Icons](https://phosphoricons.com/) - Iconografia limpa e moderna.
 
-## 🛠️ Como rodar o projeto localmente
+## ⚙️ Como Executar o Projeto
 
 ### Pré-requisitos
-* Go 1.20+ instalado
-* PostgreSQL rodando localmente
+- Go 1.20+ instalado
+- PostgreSQL rodando localmente ou em nuvem
 
-### 1. Configuração do Banco de Dados
-No seu terminal PostgreSQL (`psql`), crie o banco e a tabela:
-```sql
-CREATE DATABASE simple_shop;
+### Passo a Passo
 
-\c simple_shop;
+1. **Clone o repositório**
+   ```bash
+   git clone [https://github.com/theo-guerra/simple-shop.git](https://github.com/theo-guerra/simple-shop.git)
+   cd simple-shop
+Configure o Banco de Dados
+Crie um banco de dados no PostgreSQL (ex: simple_shop) e execute os scripts de criação de tabelas (produtos, caixa_movimentos, sessoes_caixa, loja_config, etc).
 
-CREATE TABLE produtos (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    preco NUMERIC(10, 2) NOT NULL,
-    quantidade INT NOT NULL
-);
-```
+Configure as Variáveis de Conexão
+No arquivo cmd/api/main.go, atualize a string de conexão com suas credenciais do banco:
 
-### 2. Configurando as Credenciais
-No arquivo `cmd/api/main.go`, altere a variável `connStr` para incluir a sua senha real do PostgreSQL:
-```go
-connStr := "user=postgres password=SUA_SENHA dbname=simple_shop host=localhost sslmode=disable"
-```
+Go
+db, _ := database.Conectar("user=postgres password=SUA_SENHA dbname=simple_shop host=localhost sslmode=disable")
+Inicie o Servidor
 
-### 3. Executando o Servidor
-No terminal, na raiz do projeto, instale as dependências e inicie o motor:
-```bash
-go mod tidy
+Bash
 go run cmd/api/main.go
-```
+Acesse a Aplicação
+Abra o navegador em http://localhost:8080/login.html
 
-Acesse o painel visual no navegador: **`http://localhost:8080`**
+👨‍💻 Autor
+Theo Guerra
 
----
-Desenvolvido por [Theo Guerra](https://github.com/TheoGuerra71).
+LinkedIn: TheoGuerra71
+
+GitHub: @theo-guerra
