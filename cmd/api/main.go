@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/theo-guerra/simple-shop/internal/database"
@@ -10,60 +9,28 @@ import (
 )
 
 func main() {
-	// 1. Configuração do Banco
-	connStr := "user=postgres password=admin dbname=simple_shop host=localhost sslmode=disable"
-	db, err := database.Conectar(connStr)
-	if err != nil {
-		log.Fatal("Falha crítica no banco:", err)
-	}
-	defer db.Close()
+	// 1. Conexão (Ajuste sua senha aqui)
+	db, _ := database.Conectar("user=postgres password=admin dbname=simple_shop host=localhost sslmode=disable")
 
-	// 2. Inicialização dos Controladores (Handlers)
-	hProdutos := &handlers.ProdutoHandler{DB: db}
-	hLoja := &handlers.LojaHandler{DB: db}   // Requer o arquivo loja.go criado
-	hFiado := &handlers.FiadoHandler{DB: db} // Requer o arquivo fiado.go criado
+	hAuth := &handlers.AuthHandler{DB: db}
+	hProd := &handlers.ProdutoHandler{DB: db}
+	hCaixa := &handlers.CaixaHandler{DB: db}
+	hLoja := &handlers.LojaHandler{DB: db}
 
-	// ==========================================
-	// MAPEAMENTO DE ROTAS (O mapa do sistema)
-	// ==========================================
+	// 2. Rotas Públicas
+	http.HandleFunc("/auth/login", hAuth.Login)
+	http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./static/public"))))
 
-	// Aba 1: Estoque e Vendas
-	http.HandleFunc("/produtos", hProdutos.ListarProdutos)
-	http.HandleFunc("/produtos/novo", hProdutos.Criar)
-	http.HandleFunc("/produtos/vender", hProdutos.Vender)
-	http.HandleFunc("/produtos/deletar", hProdutos.Deletar)
+	// 3. Rotas Protegidas (JWT)
+	http.HandleFunc("/api/produtos", handlers.Autenticador(hProd.ListarProdutos))
+	http.HandleFunc("/api/vender", handlers.Autenticador(hProd.Vender))
+	http.HandleFunc("/api/dashboard", handlers.Autenticador(hCaixa.DashboardMobile))
+	http.HandleFunc("/api/movimentos", handlers.Autenticador(hCaixa.ListarMovimentosHoje))
+	http.HandleFunc("/api/loja", handlers.Autenticador(hLoja.ObterConfig))
 
-	// Aba 2: Minha Loja (Configurações e Tarefas)
-	http.HandleFunc("/loja/config", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			hLoja.ObterConfig(w, r)
-		} else {
-			hLoja.AtualizarConfig(w, r)
-		}
-	})
-	http.HandleFunc("/loja/tarefas", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			hLoja.ListarTarefas(w, r)
-		} else {
-			hLoja.CriarTarefa(w, r)
-		}
-	})
-
-	// Aba 3: Caderno de Fiado
-	http.HandleFunc("/clientes/novo", hFiado.CadastrarCliente)
-	http.HandleFunc("/fiados", hFiado.ListarFiados)
-	http.HandleFunc("/fiados/novo", hFiado.NovoFiado)
-	http.HandleFunc("/fiados/pagar", hFiado.DarBaixa)
-
-	// ROTA DO FRONT-END HTML
+	// 4. Servir Frontend Admin
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
-	// ==========================================
-	fmt.Println("🚀 Backend Completo Online em http://localhost:8080")
-	fmt.Println("📦 Modos ativos: Estoque | Minha Loja | Caderno de Fiado")
-
-	// Inicia o servidor e libera a porta caso falhe
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("Servidor parou. Use 'fuser -k 8080/tcp' se a porta estiver travada. Erro:", err)
-	}
+	fmt.Println("🚀 ERP BLINDADO NIVEL 1000: http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
 }

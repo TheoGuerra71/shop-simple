@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/theo-guerra/simple-shop/internal/models"
@@ -14,70 +13,68 @@ type ProdutoHandler struct {
 	DB *sql.DB
 }
 
-// ListarProdutos (GET) - Traz o estoque atual
+// ListarProdutos (GET) - Agora traz custo e estoque mínimo
 func (h *ProdutoHandler) ListarProdutos(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query("SELECT id, nome, preco, quantidade FROM produtos ORDER BY id ASC")
+	rows, err := h.DB.Query("SELECT id, nome, preco, custo, quantidade, estoque_minimo, url_imagem FROM produtos ORDER BY id ASC")
 	if err != nil {
-		http.Error(w, "Erro no banco", 500)
+		http.Error(w, "Erro ao buscar produtos", 500)
 		return
 	}
 	defer rows.Close()
 
-	var produtos []models.Produto
+	var produtos []models.ProdutoApp
 	for rows.Next() {
-		var p models.Produto
-		rows.Scan(&p.ID, &p.Nome, &p.Preco, &p.Quantidade)
+		var p models.ProdutoApp
+		rows.Scan(&p.ID, &p.Nome, &p.PrecoVenda, &p.Custo, &p.Quantidade, &p.EstoqueMinimo, &p.UrlImagem)
 		produtos = append(produtos, p)
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(produtos)
 }
 
-// Criar (POST) - ESSA É A FUNÇÃO QUE ESTAVA FALTANDO! Cadastra novos itens.
+// Criar (POST) - Salva com os novos campos financeiros
 func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método não permitido", 405)
-		return
-	}
-
-	var p models.Produto
+	var p models.ProdutoApp
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		http.Error(w, "Dados inválidos", 400)
 		return
 	}
 
-	_, err := h.DB.Exec("INSERT INTO produtos (nome, preco, quantidade) VALUES ($1, $2, $3)", p.Nome, p.Preco, p.Quantidade)
+	query := `INSERT INTO produtos (nome, preco, custo, quantidade, estoque_minimo, url_imagem) 
+              VALUES ($1, $2, $3, $4, $5, $6)`
+	_, err := h.DB.Exec(query, p.Nome, p.PrecoVenda, p.Custo, p.Quantidade, p.EstoqueMinimo, p.UrlImagem)
 	if err != nil {
-		http.Error(w, "Erro ao salvar", 500)
+		http.Error(w, "Erro ao salvar produto", 500)
 		return
 	}
 
-	log.Printf("🆕 Produto cadastrado: %s", p.Nome)
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintln(w, "✅ Produto cadastrado!")
 }
 
-// Vender (POST) - Reduz o estoque com segurança (Transação ACID)
+// Vender (POST) - A função mais importante: Baixa estoque + Gera Entrada no Caixa
 func (h *ProdutoHandler) Vender(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método não permitido", 405)
-		return
+	var req struct {
+		ID         int `json:"id"`
+		Quantidade int `json:"quantidade"`
 	}
-
-	var req models.VendaRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Dados de venda inválidos", 400)
+		http.Error(w, "Erro nos dados", 400)
 		return
 	}
 
 	tx, err := h.DB.Begin()
 	if err != nil {
-		http.Error(w, "Erro interno", 500)
+		http.Error(w, "Erro na transação", 500)
 		return
 	}
 
 	var estoqueAtual int
-	err = tx.QueryRow("SELECT quantidade FROM produtos WHERE id = $1", req.ID).Scan(&estoqueAtual)
+	var preco float64
+	var nome string
+
+	// Busca dados do produto
+	err = tx.QueryRow("SELECT quantidade, preco, nome FROM produtos WHERE id = $1", req.ID).Scan(&estoqueAtual, &preco, &nome)
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, "Produto não encontrado", 404)
@@ -90,43 +87,34 @@ func (h *ProdutoHandler) Vender(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 1. Reduz o Estoque
 	_, err = tx.Exec("UPDATE produtos SET quantidade = quantidade - $1 WHERE id = $2", req.Quantidade, req.ID)
 	if err != nil {
 		tx.Rollback()
-		http.Error(w, "Falha na atualização", 500)
+		http.Error(w, "Erro ao atualizar estoque", 500)
+		return
+	}
+
+	// 2. Registra a ENTRADA no Caixa (Para o gráfico de lucro e vendas hoje)
+	valorTotal := preco * float64(req.Quantidade)
+	desc := fmt.Sprintf("Venda: %dx %s", req.Quantidade, nome)
+	_, err = tx.Exec("INSERT INTO caixa_movimentos (tipo, descricao, valor) VALUES ('ENTRADA', $1, $2)", desc, valorTotal)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Erro ao registrar no caixa", 500)
 		return
 	}
 
 	tx.Commit()
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "✅ Venda processada!")
 }
 
-// Deletar (POST) - Remove o item do estoque permanentemente
+// Deletar (POST)
 func (h *ProdutoHandler) Deletar(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Método não permitido", 405)
-		return
+	var req struct {
+		ID int `json:"id"`
 	}
-
-	var req models.DeleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "ID inválido", 400)
-		return
-	}
-
-	res, err := h.DB.Exec("DELETE FROM produtos WHERE id = $1", req.ID)
-	if err != nil {
-		http.Error(w, "Erro ao deletar", 500)
-		return
-	}
-
-	count, _ := res.RowsAffected()
-	if count == 0 {
-		http.Error(w, "Produto não encontrado", 404)
-		return
-	}
-
+	json.NewDecoder(r.Body).Decode(&req)
+	h.DB.Exec("DELETE FROM produtos WHERE id = $1", req.ID)
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "✅ Produto removido!")
 }

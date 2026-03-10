@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Meu PDV</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center p-6">
+    <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl text-center">
+        <h1 class="text-3xl font-black text-gray-800 mb-2">Meu PDV</h1>
+        <p class="text-gray-400 font-medium mb-8">Faça login para continuar</p>
+        
+        <div class="space-y-4">
+            <input type="email" id="email" placeholder="E-mail" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <input type="password" id="pass" placeholder="Senha" class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500">
+            <button onclick="fazerLogin()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-all">Entrar</button>
+        </div>
+        
+        <p class="mt-8 text-sm text-gray-400">Não tem conta? <span class="text-emerald-500 font-bold">Cadastre-se</span></p>
+    </div>
+
+    <script>
+        async function fazerLogin() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('pass').value;
+
+            const res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, senha })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem('token', data.token); // Guarda o crachá no navegador
+                window.location.href = '/index.html'; // Vai pro painel
+            } else {
+                alert("Login falhou! Verifique os dados.");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -2,410 +2,367 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel - Shop Simple</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Meu PDV - Theo Guerra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        // 🛡️ SEGURANÇA: Bloqueio imediato se não houver Token de Login
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login.html';
+        }
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#10b981', 600: '#059669' } // Verde das fotos
+                    }
+                }
+            }
+        }
+
+        // 🧠 FUNÇÃO GLOBAL: Faz requisições enviando o Token JWT automaticamente
+        async function apiFetch(url, options = {}) {
+            const token = localStorage.getItem('token');
+            const res = await fetch(url, {
+                ...options,
+                headers: { 
+                    ...options.headers, 
+                    'Authorization': token, 
+                    'Content-Type': 'application/json' 
+                }
+            });
+            // Se o servidor disser que o token expirou (401), desloga na hora
+            if (res.status === 401) {
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            }
+            return res;
+        }
+    </script>
     <style>
-        /* =========================================
-           VARIÁVEIS DE COR E ESTILO GLOBAL
-           ========================================= */
-        :root {
-            --bg-color: #f4f7f6;
-            --sidebar-bg: #2c3e50;
-            --text-main: #333;
-            --text-light: #ecf0f1;
-            --primary: #3498db;
-            --success: #2ecc71;
-            --danger: #e74c3c;
-            --card-bg: #ffffff;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* =========================================
-           SIDEBAR (MENU LATERAL)
-           ========================================= */
-        .sidebar {
-            width: 250px;
-            background-color: var(--sidebar-bg);
-            color: var(--text-light);
-            display: flex;
-            flex-direction: column;
-            padding-top: 20px;
-        }
-
-        .sidebar h2 {
-            text-align: center;
-            border-bottom: 1px solid #34495e;
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-        }
-
-        .menu-btn {
-            background: none;
-            border: none;
-            color: var(--text-light);
-            padding: 15px 20px;
-            text-align: left;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .menu-btn:hover, .menu-btn.active {
-            background-color: var(--primary);
-            border-left: 5px solid #2980b9;
-        }
-
-        /* =========================================
-           ÁREA PRINCIPAL E ABAS (TABS)
-           ========================================= */
-        .main-content {
-            flex: 1;
-            padding: 30px;
-            overflow-y: auto;
-        }
-
-        .tab-content {
-            display: none; /* Esconde todas as abas por padrão */
-            animation: fadeIn 0.4s;
-        }
-
-        .tab-content.active {
-            display: block; /* Mostra apenas a aba ativa */
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* =========================================
-           CARDS E BOTÕES
-           ========================================= */
-        .card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-
-        .produto-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        button {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            transition: 0.2s;
-        }
-        
-        button:hover { opacity: 0.8; }
-        .btn-success { background-color: var(--success); }
-        .btn-danger { background-color: var(--danger); }
-        .btn-primary { background-color: var(--primary); }
-
-        /* =========================================
-           MODAL (POP-UP DE VENDA)
-           ========================================= */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-box {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            width: 300px;
-            text-align: center;
-        }
-
-        .modal-box input {
-            width: 80%;
-            padding: 10px;
-            margin: 15px 0;
-            font-size: 16px;
-            text-align: center;
-        }
+        /* Estilo para esconder scroll e fixar navegação */
+        ::-webkit-scrollbar { display: none; }
+        body { -webkit-tap-highlight-color: transparent; scrollbar-width: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-900 font-sans pb-24">
 
-    <nav class="sidebar">
-        <h2>🛒 Shop Simple</h2>
-        <button class="menu-btn active" onclick="mudarAba('estoque', this)">📦 Estoque</button>
-        <button class="menu-btn" onclick="mudarAba('fiados', this)">📒 Caderno de Fiado</button>
-        <button class="menu-btn" onclick="mudarAba('loja', this)">⚙️ Minha Loja</button>
-    </nav>
+    <header class="bg-white px-6 pt-6 pb-4 flex justify-between items-center border-b border-gray-100 sticky top-0 z-40">
+        <div>
+            <h1 class="text-[10px] font-black text-brand-500 uppercase tracking-[0.2em]">Painel Admin</h1>
+            <h2 id="page-title" class="text-2xl font-black text-gray-800">Caixa do Dia</h2>
+        </div>
+        <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition-colors">
+            <i class="ph ph-sign-out text-2xl"></i>
+        </button>
+    </header>
 
-    <main class="main-content">
-        
-        <section id="estoque" class="tab-content active">
-            <h1>Controle de Estoque</h1>
-            <div class="card">
-                <h3>Novo Produto</h3>
-                <input type="text" id="novo-nome" placeholder="Nome do Produto">
-                <input type="number" id="novo-preco" placeholder="Preço (R$)" step="0.01">
-                <input type="number" id="novo-qtd" placeholder="Quantidade">
-                <button class="btn-primary" onclick="cadastrarProduto()">Adicionar</button>
+    <main class="px-6 py-4">
+
+        <section id="aba-caixa" class="tab-content active space-y-6">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Dashboard de Hoje</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+                    <i class="ph ph-trend-up text-brand-500 bg-emerald-50 p-2 rounded-xl mb-3 block w-fit"></i>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Vendas Hoje</span>
+                    <p class="text-lg font-black mt-1">R$ <span id="dash-vendas-hoje">0,00</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+                    <i class="ph ph-calendar text-blue-500 bg-blue-50 p-2 rounded-xl mb-3 block w-fit"></i>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Vendas no Mês</span>
+                    <p class="text-lg font-black mt-1">R$ <span id="dash-vendas-mes">0,00</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+                    <i class="ph ph-ticket text-orange-500 bg-orange-50 p-2 rounded-xl mb-3 block w-fit"></i>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Ticket Médio</span>
+                    <p class="text-lg font-black mt-1">R$ <span id="dash-ticket">0,00</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+                    <i class="ph ph-package text-gray-400 bg-gray-50 p-2 rounded-xl mb-3 block w-fit"></i>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Itens Estoque</span>
+                    <p class="text-lg font-black mt-1"><span id="dash-estoque-total">0</span></p>
+                </div>
             </div>
 
-            <div class="card" id="lista-produtos">
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-white p-3 rounded-2xl text-center shadow-sm border border-gray-100">
+                    <span class="text-[8px] font-bold text-gray-400 uppercase">Entradas</span>
+                    <p class="text-xs font-black text-brand-500 mt-1">R$ <span id="dash-entradas">0,00</span></p>
+                </div>
+                <div class="bg-white p-3 rounded-2xl text-center shadow-sm border border-gray-100">
+                    <span class="text-[8px] font-bold text-gray-400 uppercase">Saídas</span>
+                    <p class="text-xs font-black text-red-500 mt-1">R$ <span id="dash-saidas">0,00</span></p>
+                </div>
+                <div class="bg-white p-3 rounded-2xl text-center shadow-sm border border-gray-100">
+                    <span class="text-[8px] font-bold text-gray-400 uppercase">Lucro</span>
+                    <p class="text-xs font-black text-emerald-700 mt-1">R$ <span id="dash-lucro">0,00</span></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 py-2">
+                <button onclick="abrirModalVenda()" class="bg-brand-500 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 active:scale-95 transition-all">
+                    <i class="ph ph-plus-circle mr-2 text-xl"></i> + Entrada
+                </button>
+                <button onclick="abrirModalSaida()" class="bg-white text-red-500 border-2 border-red-50 py-4 rounded-2xl font-black active:scale-95 transition-all">
+                    <i class="ph ph-minus-circle mr-2 text-xl"></i> - Saída
+                </button>
+            </div>
+
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-4 tracking-widest">Movimentações de Hoje</p>
+                <div id="lista-movimentos" class="space-y-3">
+                    </div>
+            </div>
+        </section>
+
+        <section id="aba-estoque" class="tab-content space-y-4">
+            <div class="flex justify-between items-center mb-2">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Catálogo de Itens</p>
+                <button onclick="alert('Funcionalidade de Novo Produto em breve!')" class="text-brand-500 font-bold text-xs">+ Novo Produto</button>
+            </div>
+            <div id="grid-estoque" class="grid grid-cols-1 gap-4">
                 </div>
         </section>
 
-        <section id="fiados" class="tab-content">
-            <h1>Caderno de Fiado</h1>
-            <div class="card">
-                <p>Em breve: A lista de clientes e dívidas aparecerá aqui.</p>
-            </div>
-        </section>
-
-        <section id="loja" class="tab-content">
-            <h1>Minha Loja</h1>
-            
-            <div class="card">
-                <h3>Configurações</h3>
-                <input type="text" id="loja-nome" placeholder="Nome da Loja"><br><br>
-                <input type="text" id="loja-whats" placeholder="WhatsApp"><br><br>
-                <input type="text" id="loja-insta" placeholder="Instagram"><br><br>
-                <button class="btn-primary" onclick="salvarConfig()">Salvar Alterações</button>
-            </div>
-
-            <div class="card">
-                <h3>To-Do List (Tarefas)</h3>
-                <input type="text" id="nova-tarefa" placeholder="Nova tarefa...">
-                <button class="btn-primary" onclick="addTarefa()">Adicionar</button>
-                <ul id="lista-tarefas" style="margin-top: 20px;"></ul>
-            </div>
+        <section id="aba-repor" class="tab-content space-y-4">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Atenção Necessária</p>
+            <div id="lista-reposicao" class="space-y-3">
+                </div>
         </section>
 
     </main>
 
-    <div class="modal-overlay" id="modal-venda">
-        <div class="modal-box">
-            <h2 id="modal-produto-nome">Produto</h2>
-            <p>Preço Unitário: R$ <span id="modal-produto-preco">0.00</span></p>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-50">
+        <button onclick="mudarAba('caixa', this)" class="nav-btn flex flex-col items-center text-brand-500">
+            <i class="ph-fill ph-shopping-cart text-2xl transition-all"></i>
+            <span class="text-[10px] font-bold mt-1">Caixa</span>
+        </button>
+        <button onclick="mudarAba('estoque', this)" class="nav-btn flex flex-col items-center text-gray-400">
+            <i class="ph ph-package text-2xl transition-all"></i>
+            <span class="text-[10px] font-bold mt-1">Estoque</span>
+        </button>
+        <button onclick="mudarAba('repor', this)" class="nav-btn flex flex-col items-center text-gray-400">
+            <i class="ph ph-warning-octagon text-2xl transition-all"></i>
+            <span class="text-[10px] font-bold mt-1">Repor</span>
+        </button>
+        <button onclick="window.location.href='/catalogo.html'" class="nav-btn flex flex-col items-center text-gray-400">
+            <i class="ph ph-share-network text-2xl transition-all"></i>
+            <span class="text-[10px] font-bold mt-1">Público</span>
+        </button>
+    </nav>
+
+    <div id="modal-venda" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-black text-gray-800">Registrar Venda</h3>
+                <button onclick="fecharModais()" class="bg-gray-100 p-2 rounded-full text-gray-400"><i class="ph ph-x"></i></button>
+            </div>
             
-            <label>Quantas unidades?</label>
-            <input type="number" id="modal-qtd-venda" value="1" min="1" oninput="calcularTotal()">
-            
-            <h3 style="color: var(--primary);">Total: R$ <span id="modal-total">0.00</span></h3>
-            
-            <button class="btn-danger" onclick="fecharModal()">Cancelar</button>
-            <button class="btn-success" onclick="confirmarVenda()">Confirmar Venda</button>
+            <div class="space-y-6">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase px-2 mb-2 block">Selecione o Item</label>
+                    <select id="venda-produto-id" onchange="atualizarTotalVenda()" class="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none appearance-none focus:border-brand-500">
+                        </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase px-2 mb-2 block">Quantidade</label>
+                        <input type="number" id="venda-qtd" value="1" min="1" oninput="atualizarTotalVenda()" class="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-brand-500 text-center">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase px-2 mb-2 block text-center">Total</label>
+                        <div class="w-full p-4 bg-emerald-50 text-brand-600 rounded-2xl font-black text-center border-2 border-emerald-100 text-xl">
+                            R$ <span id="venda-total">0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="confirmarVenda()" class="w-full bg-brand-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-emerald-100 active:scale-95 transition-all mt-4">Confirmar Venda</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-saida" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-black text-gray-800">Registrar Saída</h3>
+                <button onclick="fecharModais()" class="bg-gray-100 p-2 rounded-full text-gray-400"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="space-y-6">
+                <input type="number" id="saida-valor" placeholder="Valor (R$)" class="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-red-500">
+                <input type="text" id="saida-desc" placeholder="Descrição (Ex: Luz, Aluguel...)" class="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-red-500">
+                <button onclick="confirmarSaida()" class="w-full bg-red-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-red-100 active:scale-95 transition-all mt-4">Confirmar Saída</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Variáveis globais para o Modal
-        let produtoVendaId = null;
-        let produtoVendaPreco = 0;
+        let produtosCached = [];
 
-        // ==========================================
-        // LÓGICA DE NAVEGAÇÃO (TABS)
-        // ==========================================
-        function mudarAba(idAba, botaoClicado) {
-            // Esconde todas as abas
-            document.querySelectorAll('.tab-content').forEach(aba => aba.classList.remove('active'));
-            // Tira o destaque de todos os botões
-            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        // --- NAVEGAÇÃO ---
+        function mudarAba(aba, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`aba-${aba}`).classList.add('active');
             
-            // Ativa a aba e o botão selecionado
-            document.getElementById(idAba).classList.add('active');
-            botaoClicado.classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('text-brand-500'); b.classList.add('text-gray-400');
+                b.querySelector('i').classList.replace('ph-fill', 'ph');
+            });
 
-            // Carrega os dados dependendo da aba
-            if (idAba === 'estoque') carregarProdutos();
-            if (idAba === 'loja') { carregarConfig(); carregarTarefas(); }
+            btn.classList.add('text-brand-500'); btn.classList.remove('text-gray-400');
+            btn.querySelector('i').classList.replace('ph', 'ph-fill');
+
+            const titulos = { caixa: 'Caixa do Dia', estoque: 'Estoque', repor: 'Reposição' };
+            document.getElementById('page-title').innerText = titulos[aba];
+            
+            if (aba === 'caixa') { carregarDash(); carregarMovimentos(); }
+            if (aba === 'estoque' || aba === 'repor') carregarEstoque();
         }
 
-        // ==========================================
-        // LÓGICA DO ESTOQUE
-        // ==========================================
-        async function carregarProdutos() {
-            const res = await fetch('/produtos');
-            const produtos = await res.json();
-            const divLista = document.getElementById('lista-produtos');
-            
-            if (!produtos || produtos.length === 0) {
-                divLista.innerHTML = '<p>Nenhum produto cadastrado.</p>';
-                return;
-            }
+        // --- API CALLS ---
+        async function carregarDash() {
+            const res = await apiFetch('/api/dashboard');
+            const d = await res.json();
+            document.getElementById('dash-vendas-hoje').innerText = d.vendas_hoje.toFixed(2);
+            document.getElementById('dash-vendas-mes').innerText = d.vendas_mes.toFixed(2);
+            document.getElementById('dash-ticket').innerText = d.ticket_medio.toFixed(2);
+            document.getElementById('dash-estoque-total').innerText = d.itens_estoque;
+            document.getElementById('dash-entradas').innerText = d.total_entradas.toFixed(2);
+            document.getElementById('dash-saidas').innerText = d.total_saidas.toFixed(2);
+            document.getElementById('dash-lucro').innerText = d.lucro_liquido.toFixed(2);
+        }
 
-            divLista.innerHTML = '';
-            produtos.forEach(p => {
-                divLista.innerHTML += `
-                    <div class="produto-item">
-                        <div>
-                            <strong>${p.nome}</strong><br>
-                            <small>Estoque: ${p.quantidade} un | R$ ${p.preco.toFixed(2)}</small>
+        async function carregarMovimentos() {
+            const res = await apiFetch('/api/movimentos');
+            const movs = await res.json();
+            const container = document.getElementById('lista-movimentos');
+            container.innerHTML = '';
+            movs.forEach(m => {
+                const isE = m.tipo === 'ENTRADA';
+                container.innerHTML += `
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-50 flex justify-between items-center">
+                    <div class="flex items-center">
+                        <div class="p-2 rounded-2xl mr-3 ${isE ? 'bg-emerald-50 text-brand-500' : 'bg-red-50 text-red-500'}">
+                            <i class="ph ph-${isE ? 'arrow-up-right' : 'arrow-down-left'} text-xl font-bold"></i>
                         </div>
                         <div>
-                            <button class="btn-success" onclick="abrirModal(${p.id}, '${p.nome}', ${p.preco}, ${p.quantidade})">Vender</button>
-                            <button class="btn-danger" onclick="deletarProduto(${p.id})">Apagar</button>
+                            <p class="text-sm font-black text-gray-800">${m.descricao}</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">${m.data_mov.split('T')[1].substring(0,5)}</p>
                         </div>
                     </div>
-                `;
+                    <p class="font-black ${isE ? 'text-brand-500' : 'text-red-500'} text-sm">${isE ? '+' : '-'} R$ ${m.valor.toFixed(2)}</p>
+                </div>`;
             });
         }
 
-        async function cadastrarProduto() {
-            const nome = document.getElementById('novo-nome').value;
-            const preco = parseFloat(document.getElementById('novo-preco').value);
-            const qtd = parseInt(document.getElementById('novo-qtd').value);
-
-            if (!nome || !preco || !qtd) return alert("Preencha todos os campos!");
-
-            await fetch('/produtos/novo', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome: nome, preco: preco, quantidade: qtd })
-            });
+        async function carregarEstoque() {
+            const res = await apiFetch('/api/produtos');
+            produtosCached = await res.json();
             
-            // Limpa os campos e recarrega
-            document.getElementById('novo-nome').value = '';
-            document.getElementById('novo-preco').value = '';
-            document.getElementById('novo-qtd').value = '';
-            carregarProdutos();
-        }
-
-        async function deletarProduto(id) {
-            if (!confirm('Tem certeza? Isso apagará o produto para sempre.')) return;
-            await fetch('/produtos/deletar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: id })
-            });
-            carregarProdutos();
-        }
-
-        // ==========================================
-        // LÓGICA DO MODAL DE VENDA INTELIGENTE
-        // ==========================================
-        function abrirModal(id, nome, preco, estoqueAtual) {
-            if (estoqueAtual <= 0) {
-                alert("Produto sem estoque!");
-                return;
-            }
-            produtoVendaId = id;
-            produtoVendaPreco = preco;
-
-            document.getElementById('modal-produto-nome').innerText = nome;
-            document.getElementById('modal-produto-preco').innerText = preco.toFixed(2);
+            const grid = document.getElementById('grid-estoque');
+            const repor = document.getElementById('lista-reposicao');
+            const select = document.getElementById('venda-produto-id');
             
-            const inputQtd = document.getElementById('modal-qtd-venda');
-            inputQtd.value = 1;
-            inputQtd.max = estoqueAtual; // Impede vender mais do que tem
+            grid.innerHTML = ''; repor.innerHTML = ''; 
+            select.innerHTML = '<option value="">Selecione um produto...</option>';
 
-            calcularTotal();
-            document.getElementById('modal-venda').style.display = 'flex';
+            produtosCached.forEach(p => {
+                const baixo = p.quantidade <= p.estoque_minimo;
+                
+                // ABA ESTOQUE
+                grid.innerHTML += `
+                <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-100 flex gap-5">
+                    <div class="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
+                        <i class="ph ph-package text-4xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-black text-gray-800">${p.nome}</h4>
+                            ${baixo ? '<span class="bg-orange-100 text-orange-600 text-[8px] font-black px-2 py-1 rounded-full">REPOR</span>' : ''}
+                        </div>
+                        <p class="text-brand-500 font-black text-lg">R$ ${p.preco.toFixed(2)}</p>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-[10px] text-gray-400 font-bold uppercase">${p.quantidade} un disponíveis</span>
+                            <i class="ph ph-pencil-simple text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>`;
+
+                // ABA REPOSIÇÃO
+                if (baixo) {
+                    repor.innerHTML += `
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="ph ph-warning-circle text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="font-black text-gray-800">${p.nome}</p>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase">Restam apenas ${p.quantidade}</p>
+                            </div>
+                        </div>
+                        <p class="text-red-500 font-black text-xs">Mín: ${p.estoque_minimo}</p>
+                    </div>`;
+                }
+
+                // SELECT MODAL
+                select.innerHTML += `<option value="${p.id}">${p.nome} (R$ ${p.preco.toFixed(2)})</option>`;
+            });
         }
 
-        function fecharModal() {
-            document.getElementById('modal-venda').style.display = 'none';
-        }
+        // --- LÓGICA MODAIS ---
+        function abrirModalVenda() { document.getElementById('modal-venda').classList.remove('hidden'); carregarEstoque(); }
+        function abrirModalSaida() { document.getElementById('modal-saida').classList.remove('hidden'); }
+        function fecharModais() { document.querySelectorAll('.fixed.inset-0').forEach(m => m.classList.add('hidden')); }
 
-        function calcularTotal() {
-            const qtd = parseInt(document.getElementById('modal-qtd-venda').value) || 0;
-            const total = qtd * produtoVendaPreco;
-            document.getElementById('modal-total').innerText = total.toFixed(2);
+        function atualizarTotalVenda() {
+            const id = document.getElementById('venda-produto-id').value;
+            const qtd = parseInt(document.getElementById('venda-qtd').value) || 0;
+            const p = produtosCached.find(prod => prod.id == id);
+            document.getElementById('venda-total').innerText = p ? (p.preco * qtd).toFixed(2) : "0,00";
         }
 
         async function confirmarVenda() {
-            const qtd = parseInt(document.getElementById('modal-qtd-venda').value);
-            
-            const res = await fetch('/produtos/vender', {
+            const id = parseInt(document.getElementById('venda-produto-id').value);
+            const qtd = parseInt(document.getElementById('venda-qtd').value);
+            if (!id || !qtd) return;
+
+            const res = await apiFetch('/api/vender', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: produtoVendaId, quantidade: qtd })
+                body: JSON.stringify({ id, quantidade: qtd })
             });
 
-            if (res.ok) {
-                fecharModal();
-                carregarProdutos(); // Atualiza a tela na hora
-            } else {
-                alert("Erro ao realizar a venda. Verifique o estoque.");
-            }
+            if (res.ok) { fecharModais(); carregarDash(); carregarMovimentos(); }
+            else { alert("Erro na venda. Verifique o estoque!"); }
         }
 
-        // ==========================================
-        // LÓGICA DA MINHA LOJA
-        // ==========================================
-        async function carregarConfig() {
-            const res = await fetch('/loja/config');
-            if (res.ok) {
-                const config = await res.json();
-                document.getElementById('loja-nome').value = config.nome_loja;
-                document.getElementById('loja-whats').value = config.whatsapp;
-                document.getElementById('loja-insta').value = config.instagram;
-            }
-        }
+        async function confirmarSaida() {
+            const valor = parseFloat(document.getElementById('saida-valor').value);
+            const desc = document.getElementById('saida-desc').value;
+            if (!valor || !desc) return;
 
-        async function salvarConfig() {
-            const dados = {
-                nome_loja: document.getElementById('loja-nome').value,
-                whatsapp: document.getElementById('loja-whats').value,
-                instagram: document.getElementById('loja-insta').value
-            };
-            await fetch('/loja/config', {
+            await apiFetch('/caixa/movimento', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dados)
+                body: JSON.stringify({ tipo: 'SAIDA', descricao: desc, valor: valor })
             });
-            alert("Configurações Salvas!");
+            fecharModais(); carregarDash(); carregarMovimentos();
         }
 
-        async function carregarTarefas() {
-            const res = await fetch('/loja/tarefas');
-            const tarefas = await res.json();
-            const lista = document.getElementById('lista-tarefas');
-            lista.innerHTML = '';
-            
-            if(tarefas) {
-                tarefas.forEach(t => {
-                    lista.innerHTML += `<li>${t.descricao}</li>`;
-                });
-            }
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
         }
 
-        async function addTarefa() {
-            const desc = document.getElementById('nova-tarefa').value;
-            if(!desc) return;
-            
-            await fetch('/loja/tarefas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ descricao: desc })
-            });
-            document.getElementById('nova-tarefa').value = '';
-            carregarTarefas();
-        }
-
-        // Inicia a aplicação carregando o estoque
-        carregarProdutos();
+        // START
+        carregarDash();
+        carregarMovimentos();
     </script>
 </body>
 </html>
