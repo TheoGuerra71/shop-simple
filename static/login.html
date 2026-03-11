@@ -9,9 +9,6 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <script>
-        // Redireciona se já estiver logado
-        if (localStorage.getItem('token')) window.location.href = '/';
-
         tailwind.config = { 
             theme: { 
                 extend: { 
@@ -80,7 +77,7 @@
             </div>
 
             <button type="submit" id="btn-submit" class="w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-xl shadow-stone-900/20 hover:bg-stone-800 transition-all active:scale-95 flex justify-center items-center gap-2 mt-4">
-                <span id="btn-texto">Entrar na minha loja</span>
+                <span id="btn-texto">Entrar no Terminal</span>
                 <i class="ph-bold ph-arrow-right" id="btn-icone"></i>
                 <div id="btn-spinner" class="spinner hidden"></div>
             </button>
@@ -88,24 +85,21 @@
 
         <div class="absolute bottom-8 left-8 right-8 text-center lg:text-left">
             <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center justify-center lg:justify-start gap-1">
-                <i class="ph-fill ph-shield-check text-emerald-500 text-sm"></i> Conexão Criptografada
+                <i class="ph-fill ph-shield-check text-emerald-500 text-sm"></i> Conexão Criptografada via Cookies
             </p>
         </div>
     </div>
 
     <div class="hidden lg:block lg:w-1/2 relative bg-stone-200">
         <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover object-center">
-        
         <div class="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent"></div>
-        
         <div class="absolute inset-0 flex flex-col justify-end p-16 text-white pb-24">
             <h2 class="font-serif text-5xl mb-6 leading-tight">Gestão inteligente<br>para negócios reais.</h2>
-            <p class="text-stone-300 text-lg max-w-md font-light">Controle seu estoque, analise o fluxo de caixa e tome decisões baseadas em dados com o seu novo Agente Financeiro.</p>
+            <p class="text-stone-300 text-lg max-w-md font-light">Controle seu estoque, analise o fluxo de caixa e tome decisões baseadas em dados.</p>
         </div>
     </div>
 
     <script>
-        // Mostrar/Ocultar Senha
         function toggleSenha() {
             const input = document.getElementById('senha');
             const icone = document.getElementById('icone-olho');
@@ -118,9 +112,8 @@
             }
         }
 
-        // Lógica de Login
         async function realizarLogin(event) {
-            event.preventDefault(); // Impede a página de recarregar
+            event.preventDefault(); 
             
             const email = document.getElementById('email').value;
             const senha = document.getElementById('senha').value;
@@ -131,7 +124,6 @@
             const btnSpinner = document.getElementById('btn-spinner');
             const msgErro = document.getElementById('msg-erro');
 
-            // UI: Inicia Carregamento
             msgErro.classList.add('hidden');
             btnSubmit.disabled = true;
             btnSubmit.classList.add('opacity-80', 'cursor-wait');
@@ -147,28 +139,19 @@
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    // Sucesso: Salva o Token JWT
-                    localStorage.setItem('token', data.token);
+                    // SUCESSO! O Go enviou o cookie HttpOnly. 
+                    // Não tocamos em localStorage aqui.
                     
-                    // UI: Sucesso visual rápido antes de redirecionar
                     btnSpinner.classList.add('hidden');
                     btnTexto.innerText = "Acesso Permitido";
                     btnSubmit.classList.replace('bg-stone-900', 'bg-emerald-600');
                     
-                    // Redireciona para o Painel CFO
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 500);
+                    setTimeout(() => { window.location.href = '/'; }, 500);
                 } else {
-                    // Falha no Login
                     throw new Error("Credenciais inválidas");
                 }
             } catch (error) {
-                // UI: Mostra erro e reseta botão
                 msgErro.classList.remove('hidden');
-                
-                // Animação de tremor no formulário (Shake)
                 const form = document.getElementById('form-login');
                 form.classList.add('translate-x-2');
                 setTimeout(() => form.classList.replace('translate-x-2', '-translate-x-2'), 100);

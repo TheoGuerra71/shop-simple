@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
-        if (!localStorage.getItem('token')) window.location.href = '/login.html';
         tailwind.config = { 
             theme: { 
                 extend: { 
@@ -19,7 +18,21 @@
                 } 
             } 
         }
-        async function apiFetch(url, options = {}) { const t = localStorage.getItem('token'); const res = await fetch(url, { ...options, headers: { ...options.headers, 'Authorization': t, 'Content-Type': 'application/json' } }); if (res.status === 401) { localStorage.removeItem('token'); window.location.href = '/login.html'; } return res; }
+
+        // MOTOR BLINDADO: Não trava a tela se a API falhar
+        async function apiFetch(url, options = {}) { 
+            try {
+                const res = await fetch(url, { 
+                    ...options, 
+                    headers: { ...options.headers, 'Content-Type': 'application/json' } 
+                }); 
+                if (res.status === 401) { window.location.href = '/login.html'; return null; } 
+                return res; 
+            } catch (e) {
+                console.error("Erro na API (" + url + "):", e);
+                return null;
+            }
+        }
     </script>
     
     <style>
@@ -43,7 +56,6 @@
         .btn-primary { background-color: #1c1917; color: white; transition: transform 0.2s ease; }
         .btn-primary:active { transform: scale(0.98); }
         .btn-pagamento.ativo { background-color: #1c1917; border-color: #1c1917; color: #ffffff; }
-        
         .nav-link.active { color: #1c1917; border-bottom-color: #1c1917; }
         .nav-link { color: #a8a29e; border-bottom-color: transparent; }
         
@@ -71,18 +83,17 @@
         </div>
 
         <div class="hidden lg:flex px-6 max-w-screen-2xl mx-auto gap-8 text-xs font-bold uppercase tracking-widest">
-            <button onclick="mudarAba('caixa', this)" class="nav-link link-caixa active py-4 border-b-2 hover:text-stone-900 transition-colors">Dashboard</button>
-            <button onclick="mudarAba('estoque', this)" class="nav-link link-estoque py-4 border-b-2 hover:text-stone-900 transition-colors">Acervo</button>
-            <button onclick="mudarAba('repor', this)" class="nav-link link-repor py-4 border-b-2 hover:text-stone-900 transition-colors">Logística</button>
-            <button onclick="mudarAba('relatorios', this)" class="nav-link link-relatorios py-4 border-b-2 hover:text-stone-900 transition-colors">Extrato</button>
-            <button onclick="mudarAba('loja', this)" class="nav-link link-loja py-4 border-b-2 hover:text-stone-900 transition-colors">Setup Loja</button>
+            <button onclick="mudarAba('caixa')" class="nav-link link-caixa active py-4 border-b-2 hover:text-stone-900 transition-colors">Dashboard</button>
+            <button onclick="mudarAba('estoque')" class="nav-link link-estoque py-4 border-b-2 hover:text-stone-900 transition-colors">Acervo</button>
+            <button onclick="mudarAba('repor')" class="nav-link link-repor py-4 border-b-2 hover:text-stone-900 transition-colors">Logística</button>
+            <button onclick="mudarAba('relatorios')" class="nav-link link-relatorios py-4 border-b-2 hover:text-stone-900 transition-colors">Extrato</button>
+            <button onclick="mudarAba('loja')" class="nav-link link-loja py-4 border-b-2 hover:text-stone-900 transition-colors">Setup Loja</button>
         </div>
     </header>
 
     <main class="p-5 lg:p-8 relative z-10 max-w-screen-2xl mx-auto">
 
         <section id="aba-caixa" class="tab-content active space-y-6">
-            
             <div id="tela-abertura-caixa" class="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-200 text-center max-w-md mx-auto mt-10">
                 <div class="w-20 h-20 bg-stone-50 text-stone-300 rounded-full flex items-center justify-center mx-auto mb-6"><i class="ph ph-lock-key text-4xl"></i></div>
                 <h2 class="text-2xl font-serif text-stone-900 mb-2">Trava de Segurança</h2>
@@ -123,13 +134,12 @@
                 </div>
 
                 <div class="bg-stone-200/50 p-2 rounded-xl text-center text-[10px] font-bold text-stone-500 uppercase tracking-widest w-fit mx-auto mt-4">Performance Recente (7 Dias)</div>
-                
                 <div class="flex flex-col lg:flex-row gap-4">
                     <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-stone-200 lg:w-3/4"><div class="h-72 w-full"><canvas id="biBarChart"></canvas></div></div>
                     <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-200 lg:w-1/4 flex flex-col justify-center space-y-6">
                         <div><div class="flex items-center gap-2 text-stone-500 mb-1"><i class="ph-fill ph-hand-coins text-xl text-emerald-600"></i><span class="font-bold text-[10px] uppercase tracking-widest">Receita</span></div><p class="text-2xl font-serif text-stone-900">R$ <span id="resumo-rec-7d">0,00</span></p></div>
-                        <div><div class="flex items-center gap-2 text-stone-500 mb-1"><i class="ph-fill ph-money text-xl text-red-600"></i><span class="font-bold text-[10px] uppercase tracking-widest">Custos Fixos/Var.</span></div><p class="text-2xl font-serif text-stone-900">R$ <span id="resumo-desp-7d">0,00</span></p></div>
-                        <div class="border-t border-stone-100 pt-4"><div class="flex items-center gap-2 text-stone-500 mb-1"><i class="ph-fill ph-trend-up text-xl text-stone-900"></i><span class="font-bold text-[10px] uppercase tracking-widest">Lucro do Período</span></div><p class="text-2xl font-serif text-stone-900">R$ <span id="resumo-lucro-7d">0,00</span></p></div>
+                        <div><div class="flex items-center gap-2 text-stone-500 mb-1"><i class="ph-fill ph-money text-xl text-red-600"></i><span class="font-bold text-[10px] uppercase tracking-widest">Despesas</span></div><p class="text-2xl font-serif text-stone-900">R$ <span id="resumo-desp-7d">0,00</span></p></div>
+                        <div class="border-t border-stone-100 pt-4"><div class="flex items-center gap-2 text-stone-500 mb-1"><i class="ph-fill ph-trend-up text-xl text-stone-900"></i><span class="font-bold text-[10px] uppercase tracking-widest">Lucro</span></div><p class="text-2xl font-serif text-stone-900">R$ <span id="resumo-lucro-7d">0,00</span></p></div>
                     </div>
                 </div>
                 
@@ -143,10 +153,7 @@
 
         <section id="aba-estoque" class="tab-content space-y-6 pb-10">
             <div class="bg-stone-900 text-white p-6 rounded-[2rem] shadow-xl flex justify-between items-center">
-                <div>
-                    <p class="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">Patrimônio Imobilizado (Custo)</p>
-                    <p class="text-3xl font-serif">R$ <span id="estoque-patrimonio">0,00</span></p>
-                </div>
+                <div><p class="text-[10px] text-stone-400 uppercase tracking-widest font-bold mb-1">Patrimônio Imobilizado (Custo)</p><p class="text-3xl font-serif">R$ <span id="estoque-patrimonio">0,00</span></p></div>
                 <div class="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/20"><i class="ph-fill ph-safe text-2xl text-stone-200"></i></div>
             </div>
 
@@ -161,31 +168,23 @@
                 </div>
             </div>
             
-            <div class="flex gap-2 overflow-x-auto hide-scroll pb-2" id="filtros-categoria">
-                </div>
-
+            <div class="flex gap-2 overflow-x-auto hide-scroll pb-2" id="filtros-categoria"></div>
             <div id="grid-estoque" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </section>
 
         <section id="aba-repor" class="tab-content space-y-6 pb-10">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-stone-200 h-fit">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="bg-stone-100 text-stone-600 p-2 rounded-xl"><i class="ph-fill ph-list-checks text-2xl"></i></div>
-                        <h3 class="font-serif text-xl text-stone-900">Tarefas & Operações</h3>
-                    </div>
+                    <div class="flex items-center gap-3 mb-6"><div class="bg-stone-100 text-stone-600 p-2 rounded-xl"><i class="ph-fill ph-list-checks text-2xl"></i></div><h3 class="font-serif text-xl text-stone-900">Tarefas & Operações</h3></div>
                     <div class="flex gap-2 mb-6 border-b border-stone-100 pb-4">
-                        <input type="text" id="nova-tarefa" placeholder="Adicionar tarefa diária..." class="flex-1 bg-transparent text-sm font-medium outline-none placeholder-stone-400">
+                        <input type="text" id="nova-tarefa" placeholder="Nova tarefa diária..." class="flex-1 bg-transparent text-sm font-medium outline-none placeholder-stone-400">
                         <button onclick="addTarefa()" class="text-stone-900 hover:text-stone-500 transition-colors"><i class="ph ph-plus-circle text-3xl"></i></button>
                     </div>
                     <div id="lista-tarefas" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 hide-scroll"></div>
                 </div>
 
                 <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-stone-200">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="bg-red-50 text-red-500 p-2 rounded-xl"><i class="ph-fill ph-warning-circle text-2xl"></i></div>
-                        <h3 class="font-serif text-xl text-stone-900">Risco de Ruptura</h3>
-                    </div>
+                    <div class="flex items-center gap-3 mb-6"><div class="bg-red-50 text-red-500 p-2 rounded-xl"><i class="ph-fill ph-warning-circle text-2xl"></i></div><h3 class="font-serif text-xl text-stone-900">Risco de Ruptura</h3></div>
                     <div id="lista-reposicao" class="space-y-3"></div>
                 </div>
             </div>
@@ -194,11 +193,8 @@
         <section id="aba-relatorios" class="tab-content space-y-6 pb-10">
             <div class="bg-white rounded-[2rem] shadow-sm border border-stone-200 p-6 md:p-8">
                 <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-8 border-b border-stone-100 pb-4 gap-4">
-                    <div>
-                        <h3 class="font-serif text-2xl text-stone-900 flex items-center gap-2"><i class="ph-fill ph-books text-stone-400"></i> Livro Caixa Detalhado</h3>
-                        <p class="text-xs text-stone-500 mt-1">Histórico segmentado por dia de operação.</p>
-                    </div>
-                    <button onclick="exportarCSV()" class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-5 py-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-colors active:scale-95"><i class="ph-fill ph-microsoft-excel-logo text-lg"></i> Gerar Planilha (.csv)</button>
+                    <div><h3 class="font-serif text-2xl text-stone-900 flex items-center gap-2"><i class="ph-fill ph-books text-stone-400"></i> Livro Caixa</h3><p class="text-xs text-stone-500 mt-1">Histórico de operações.</p></div>
+                    <button onclick="exportarCSV()" class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-5 py-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-colors active:scale-95"><i class="ph-fill ph-microsoft-excel-logo text-lg"></i> Gerar (.csv)</button>
                 </div>
                 <div id="lista-extrato-dias" class="space-y-6 max-h-[600px] overflow-y-auto pr-2 hide-scroll"></div>
             </div>
@@ -208,60 +204,25 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-200">
                     <h3 class="font-serif text-2xl text-stone-900 mb-2">Identidade do Catálogo</h3>
-                    <p class="text-xs text-stone-500 mb-8 border-b border-stone-100 pb-4">Personalize a vitrine online para seus clientes.</p>
-                    
+                    <p class="text-xs text-stone-500 mb-8 border-b border-stone-100 pb-4">Personalize a vitrine online.</p>
                     <div class="space-y-5">
-                        <div>
-                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Nome da Empresa</label>
-                            <input type="text" id="loja-nome" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-lg outline-none focus:border-stone-400 transition-colors">
-                        </div>
+                        <div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Nome da Empresa</label><input type="text" id="loja-nome" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-lg outline-none focus:border-stone-400 transition-colors"></div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">WhatsApp Vendas</label>
-                                <input type="text" id="loja-whats" placeholder="55219..." class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Cor do Tema</label>
-                                <div class="flex items-center gap-3 bg-stone-50 p-3 rounded-2xl border border-stone-200">
-                                    <input type="color" id="loja-cor" value="#1c1917" oninput="atualizarMockup()" class="h-8 w-12 rounded cursor-pointer border-none bg-transparent">
-                                    <span class="text-xs font-bold text-stone-600 uppercase tracking-widest" id="hex-label">#1C1917</span>
-                                </div>
-                            </div>
+                            <div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">WhatsApp Vendas</label><input type="text" id="loja-whats" placeholder="55219..." class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"></div>
+                            <div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Cor do Tema</label><div class="flex items-center gap-3 bg-stone-50 p-3 rounded-2xl border border-stone-200"><input type="color" id="loja-cor" value="#1c1917" oninput="atualizarMockup()" class="h-8 w-12 rounded cursor-pointer border-none bg-transparent"><span class="text-xs font-bold text-stone-600 uppercase tracking-widest" id="hex-label">#1C1917</span></div></div>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Instagram (Ex: @marca)</label>
-                            <input type="text" id="loja-insta" placeholder="@suamarca" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Mensagem de Rodapé</label>
-                            <textarea id="loja-msg" rows="2" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"></textarea>
-                        </div>
-                        <div class="pt-4 flex gap-3">
-                            <button onclick="salvarConfigLoja()" class="flex-1 btn-primary py-4 rounded-full font-bold text-sm shadow-lg">Salvar Design</button>
-                            <button onclick="window.open('/catalogo.html', '_blank')" class="w-14 h-14 bg-stone-100 text-stone-900 rounded-full flex items-center justify-center hover:bg-stone-200 transition-colors"><i class="ph-fill ph-arrow-square-out text-xl"></i></button>
-                        </div>
+                        <div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Instagram</label><input type="text" id="loja-insta" placeholder="@suamarca" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Mensagem de Rodapé</label><textarea id="loja-msg" rows="2" oninput="atualizarMockup()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"></textarea></div>
+                        <div class="pt-4 flex gap-3"><button onclick="salvarConfigLoja()" class="flex-1 btn-primary py-4 rounded-full font-bold text-sm shadow-lg">Salvar Design</button><button onclick="window.open('/catalogo.html', '_blank')" class="w-14 h-14 bg-stone-100 text-stone-900 rounded-full flex items-center justify-center hover:bg-stone-200 transition-colors"><i class="ph-fill ph-arrow-square-out text-xl"></i></button></div>
                     </div>
                 </div>
-
                 <div class="flex justify-center lg:sticky top-32 pb-10">
                     <div class="phone-mockup w-[300px] h-[600px] flex flex-col bg-[#faf9f6]">
                         <div class="phone-notch"></div>
                         <div class="flex-1 overflow-hidden flex flex-col pt-8 relative">
-                            <div class="text-center px-4 pb-4 border-b border-stone-200 bg-white">
-                                <h2 class="font-serif text-xl text-stone-900" id="mock-nome">Boutique</h2>
-                                <p class="text-[10px] text-stone-500 mt-1" id="mock-insta">@instagram</p>
-                            </div>
-                            <div class="p-4 space-y-4">
-                                <div class="flex gap-2"><div class="w-16 h-6 rounded-full bg-stone-200"></div><div class="w-16 h-6 rounded-full bg-white border border-stone-200"></div></div>
-                                <div class="w-full h-48 bg-stone-200 rounded-xl relative overflow-hidden flex items-center justify-center text-stone-400">
-                                    <i class="ph ph-image text-3xl"></i>
-                                    <div class="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center text-white transition-colors shadow-lg" id="mock-btn-color" style="background-color: #1c1917;"><i class="ph-fill ph-bag text-lg"></i></div>
-                                </div>
-                                <div><p class="font-serif text-sm font-bold">Produto Modelo</p><p class="text-xs text-stone-500">R$ 149,90</p></div>
-                            </div>
-                            <div class="absolute bottom-0 left-0 right-0 p-4 text-center">
-                                <p class="font-serif text-xs italic text-stone-400" id="mock-msg">Estamos aqui para você.</p>
-                            </div>
+                            <div class="text-center px-4 pb-4 border-b border-stone-200 bg-white"><h2 class="font-serif text-xl text-stone-900" id="mock-nome">Boutique</h2><p class="text-[10px] text-stone-500 mt-1" id="mock-insta">@instagram</p></div>
+                            <div class="p-4 space-y-4"><div class="flex gap-2"><div class="w-16 h-6 rounded-full bg-stone-200"></div><div class="w-16 h-6 rounded-full bg-white border border-stone-200"></div></div><div class="w-full h-48 bg-stone-200 rounded-xl relative overflow-hidden flex items-center justify-center text-stone-400"><i class="ph ph-image text-3xl"></i><div class="absolute bottom-3 right-3 w-10 h-10 rounded-full flex items-center justify-center text-white transition-colors shadow-lg" id="mock-btn-color" style="background-color: #1c1917;"><i class="ph-fill ph-bag text-lg"></i></div></div><div><p class="font-serif text-sm font-bold">Produto Modelo</p><p class="text-xs text-stone-500">R$ 149,90</p></div></div>
+                            <div class="absolute bottom-0 left-0 right-0 p-4 text-center"><p class="font-serif text-xs italic text-stone-400" id="mock-msg">Estamos aqui para você.</p></div>
                         </div>
                     </div>
                 </div>
@@ -271,56 +232,54 @@
     </main>
 
     <nav class="glass-nav fixed bottom-0 left-0 right-0 px-4 py-3 flex justify-between items-center z-40 lg:hidden shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-stone-200 pb-safe">
-        <button onclick="mudarAba('caixa', this)" id="btn-nav-caixa" class="nav-link link-caixa active flex flex-col items-center text-stone-900"><i class="ph-fill ph-squares-four text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Painel</span></button>
-        <button onclick="mudarAba('estoque', this)" id="btn-nav-estoque" class="nav-link link-estoque flex flex-col items-center text-stone-400"><i class="ph ph-package text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Estoque</span></button>
-        <button onclick="mudarAba('repor', this)" id="btn-nav-repor" class="nav-link link-repor flex flex-col items-center text-stone-400 relative"><div class="relative"><i class="ph ph-list-checks text-2xl mb-1"></i><span id="badge-repor-mobile" class="hidden absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-red-500"></span></div><span class="text-[8px] font-bold uppercase tracking-widest">Logística</span></button>
-        <button onclick="mudarAba('relatorios', this)" id="btn-nav-relat" class="nav-link link-relatorios flex flex-col items-center text-stone-400"><i class="ph ph-list-numbers text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Extrato</span></button>
-        <button onclick="mudarAba('loja', this)" id="btn-nav-loja" class="nav-link link-loja flex flex-col items-center text-stone-400"><i class="ph ph-faders text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Loja</span></button>
+        <button onclick="mudarAba('caixa')" id="btn-nav-caixa" class="nav-link link-caixa active flex flex-col items-center"><i class="ph-fill ph-squares-four text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Painel</span></button>
+        <button onclick="mudarAba('estoque')" id="btn-nav-estoque" class="nav-link link-estoque flex flex-col items-center"><i class="ph ph-package text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Estoque</span></button>
+        <button onclick="mudarAba('repor')" id="btn-nav-repor" class="nav-link link-repor flex flex-col items-center relative"><div class="relative"><i class="ph ph-list-checks text-2xl mb-1"></i><span id="badge-repor-mobile" class="hidden absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-red-500"></span></div><span class="text-[8px] font-bold uppercase tracking-widest">Log</span></button>
+        <button onclick="mudarAba('relatorios')" id="btn-nav-relat" class="nav-link link-relatorios flex flex-col items-center"><i class="ph ph-list-numbers text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Extrato</span></button>
+        <button onclick="mudarAba('loja')" id="btn-nav-loja" class="nav-link link-loja flex flex-col items-center"><i class="ph ph-faders text-2xl mb-1"></i><span class="text-[8px] font-bold uppercase tracking-widest">Loja</span></button>
     </nav>
 
-    <div id="modal-fechar-caixa" class="glass-modal hidden fixed inset-0 z-[70] flex items-center justify-center p-4"><div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center border border-stone-200"><div class="w-16 h-16 bg-stone-50 text-stone-400 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph ph-lock-key text-3xl"></i></div><h3 class="text-2xl font-serif text-stone-900 mb-2">Encerrar Turno</h3><p class="text-xs text-stone-500 mb-6">Confira o saldo na gaveta.</p><div class="bg-stone-50 py-6 rounded-2xl mb-6 border border-stone-100"><p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Sistema Espera</p><h2 class="text-3xl font-serif text-stone-900">R$ <span id="resumo-fecha-caixa">0,00</span></h2></div><div class="flex gap-3"><button onclick="fecharModais()" class="flex-1 bg-white border border-stone-300 text-stone-600 py-3 rounded-full font-bold text-sm">Cancelar</button><button onclick="confirmarFechamento()" class="flex-1 btn-primary py-3 rounded-full font-bold text-sm">Confirmar</button></div></div></div>
+    <div id="modal-fechar-caixa" class="glass-modal hidden fixed inset-0 z-[70] flex items-center justify-center p-4"><div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center border border-stone-200"><div class="w-16 h-16 bg-stone-50 text-stone-400 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph ph-lock-key text-3xl"></i></div><h3 class="text-2xl font-serif text-stone-900 mb-2">Encerrar Turno</h3><p class="text-xs text-stone-500 mb-6">Confira o saldo na gaveta.</p><div class="bg-stone-50 py-6 rounded-2xl mb-6 border border-stone-100"><p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Sistema Espera</p><h2 class="text-4xl font-serif text-stone-900">R$ <span id="resumo-fecha-caixa">0,00</span></h2></div><div class="flex gap-3"><button onclick="fecharModais()" class="flex-1 bg-white border border-stone-300 text-stone-600 py-3 rounded-full font-bold text-sm">Cancelar</button><button onclick="confirmarFechamento()" class="flex-1 btn-primary py-3 rounded-full font-bold text-sm">Confirmar</button></div></div></div>
     
     <div id="modal-produto" class="glass-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4"><div class="bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-serif text-stone-900" id="titulo-modal-produto">Item do Acervo</h3><button onclick="fecharModais()" class="text-stone-400 hover:text-stone-900"><i class="ph ph-x text-xl"></i></button></div><div class="space-y-4"><input type="hidden" id="prod-id" value=""><input type="hidden" id="prod-img-base64" value=""><div class="w-full"><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Mídia do Produto</label><label class="upload-zone w-full h-32 rounded-2xl flex flex-col items-center justify-center cursor-pointer relative overflow-hidden bg-stone-50"><input type="file" accept="image/*" class="hidden" onchange="processarImagem(event)"><div id="upload-placeholder" class="flex flex-col items-center text-stone-400 pointer-events-none"><i class="ph ph-image text-3xl mb-1"></i><span class="text-[10px] uppercase tracking-widest font-bold">Enviar foto</span></div><img id="preview-img" src="" class="hidden absolute inset-0 w-full h-full object-cover"><button type="button" id="btn-remover-img" onclick="removerImagemPreview(event)" class="hidden absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"><i class="ph ph-x text-xs"></i></button></label></div><div class="grid grid-cols-2 gap-4"><div class="col-span-2"><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Nome</label><input type="text" id="prod-nome" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"></div><div class="col-span-2"><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Categoria</label><input type="text" id="prod-cat" value="Geral" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none text-stone-600"></div><div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Venda (R$)</label><input type="number" id="prod-preco" step="0.01" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl outline-none font-serif text-lg"></div><div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Custo (R$)</label><input type="number" id="prod-custo" step="0.01" value="0.00" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl outline-none font-serif text-lg"></div><div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Qtd</label><input type="number" id="prod-qtd" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl outline-none font-serif text-lg"></div><div><label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">Mínimo</label><input type="number" id="prod-min" value="5" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl outline-none font-serif text-lg"></div></div><button onclick="salvarProduto()" class="w-full btn-primary py-4 rounded-full font-bold mt-2">Salvar Alterações</button></div></div></div>
-    <div id="modal-venda" class="glass-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4"><div class="bg-white w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-serif text-stone-900">Nova Venda</h3><button onclick="fecharModais()" class="text-stone-400 hover:text-stone-800"><i class="ph ph-x text-xl"></i></button></div><div class="space-y-5"><select id="venda-produto-id" onchange="atualizarTotalVenda()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium text-stone-800 outline-none"></select><div class="flex gap-4 items-end"><div class="w-1/3"><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1 text-center">Qtd</label><input type="number" id="venda-qtd" value="1" min="1" oninput="atualizarTotalVenda()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-2xl text-center outline-none"></div><div class="w-2/3"><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1 text-right">Total a Receber</label><div class="w-full p-4 bg-[#1c1917] text-white rounded-2xl font-serif text-right text-3xl">R$ <span id="venda-total">0,00</span></div></div></div><div><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-3 block">Pagamento</label><div class="grid grid-cols-3 gap-2"><button type="button" onclick="setPagamento('Dinheiro', this)" class="btn-pagamento ativo border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Dinheiro</button><button type="button" onclick="setPagamento('Pix', this)" class="btn-pagamento border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Pix</button><button type="button" onclick="setPagamento('Cartão', this)" class="btn-pagamento border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Cartão</button></div></div><button onclick="confirmarVenda()" class="w-full btn-primary py-4 rounded-full font-bold mt-2">Confirmar</button></div></div></div>
+    <div id="modal-venda" class="glass-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4"><div class="bg-white w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-serif text-stone-900">Nova Venda</h3><button onclick="fecharModais()" class="text-stone-400 hover:text-stone-800"><i class="ph ph-x text-xl"></i></button></div><div class="space-y-5"><select id="venda-produto-id" onchange="atualizarTotalVenda()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium text-stone-800 outline-none"></select><div class="flex gap-4 items-end"><div class="w-1/3"><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1 text-center">Qtd</label><input type="number" id="venda-qtd" value="1" min="1" oninput="atualizarTotalVenda()" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-2xl text-center outline-none"></div><div class="w-2/3"><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1 text-right">Total a Receber</label><div class="w-full p-4 bg-stone-900 text-white rounded-2xl font-serif text-right text-3xl">R$ <span id="venda-total">0,00</span></div></div></div><div><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest mb-3 block">Pagamento</label><div class="grid grid-cols-3 gap-2"><button type="button" onclick="setPagamento('Dinheiro', this)" class="btn-pagamento ativo border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Dinheiro</button><button type="button" onclick="setPagamento('Pix', this)" class="btn-pagamento border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Pix</button><button type="button" onclick="setPagamento('Cartão', this)" class="btn-pagamento border py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase transition-colors">Cartão</button></div></div><button onclick="confirmarVenda()" class="w-full btn-primary py-4 rounded-full font-bold mt-2">Confirmar</button></div></div></div>
     <div id="modal-saida" class="glass-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4"><div class="bg-white w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-serif text-stone-900">Lançar Despesa</h3><button onclick="fecharModais()" class="text-stone-400 hover:text-stone-800"><i class="ph ph-x text-xl"></i></button></div><div class="space-y-4"><input type="number" id="saida-valor" placeholder="Valor (R$)" class="w-full p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl font-serif text-3xl outline-none"><input type="text" id="saida-desc" placeholder="Qual foi a despesa?" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none"><button onclick="confirmarSaida()" class="w-full btn-primary py-4 rounded-full font-bold mt-2">Registrar Saída</button></div></div></div>
     <div id="modal-repor-item" class="glass-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-4"><div class="bg-white w-full max-w-md rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200"><div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-serif text-stone-900">Entrada de Estoque</h3><button onclick="fecharModais()" class="text-stone-400 hover:text-stone-800"><i class="ph ph-x text-xl"></i></button></div><div class="space-y-4"><input type="hidden" id="repor-id"><div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 mb-2"><p class="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Produto</p><p class="font-serif text-lg text-stone-800" id="repor-nome-txt"></p></div><div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1">Chegaram (Qtd)</label><input type="number" id="repor-qtd" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-2xl text-center outline-none"></div><div><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-1">Custo Total (R$)</label><input type="number" id="repor-custo" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-serif text-2xl text-center outline-none"></div></div><button onclick="confirmarReposicao()" class="w-full btn-primary py-4 rounded-full font-bold mt-2">Processar Nota</button></div></div></div>
     <div id="modal-recibo" class="glass-modal hidden fixed inset-0 z-[70] flex items-end md:items-center justify-center md:p-4 transition-opacity"><div class="bg-white w-full max-w-sm rounded-t-[2rem] md:rounded-[2rem] p-8 pb-12 shadow-2xl border border-stone-200 text-center"><div class="w-16 h-16 bg-stone-100 text-stone-800 rounded-full flex items-center justify-center mx-auto mb-4"><i class="ph-fill ph-check-circle text-4xl"></i></div><h3 class="text-2xl font-serif text-stone-900 mb-6">Operação Concluída</h3><div class="bg-stone-50 p-6 rounded-3xl mb-6 border border-stone-100"><p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Valor Recebido</p><h2 class="text-4xl font-serif text-stone-900 mb-2">R$ <span id="recibo-total">0,00</span></h2><p class="text-xs text-stone-500 font-bold uppercase tracking-widest" id="recibo-produto">Produto</p></div><div class="space-y-4"><label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block text-center">Enviar Recibo via WhatsApp</label><div class="flex gap-2"><input type="text" id="zap-cliente" placeholder="DDD + Número" class="flex-1 p-4 bg-white border border-stone-200 rounded-full font-bold outline-none text-center"><button onclick="enviarZap()" class="btn-primary px-6 rounded-full"><i class="ph-fill ph-paper-plane-right text-xl"></i></button></div><button onclick="fecharModais()" class="w-full bg-stone-50 text-stone-500 py-4 rounded-full font-bold text-sm hover:bg-stone-100">Fechar</button></div></div></div>
 
     <script>
+        // MANTÉM OS ARRAYS BLINDADOS
         let produtosCached = []; let todosMovimentos = []; let barChartInst = null;
         let pagamentoSelecionado = 'Dinheiro'; let dadosReciboLocal = {};
+        let currentCategoriaFiltro = 'Todos'; let currentBuscaFiltro = '';
         
         let caixaAberto = localStorage.getItem('caixaAberto') === 'true';
         let fundoTroco = parseFloat(localStorage.getItem('fundoTroco') || 0);
-        let checklist = JSON.parse(localStorage.getItem('checklist') || '[]');
-
-        // VARIÁVEIS DO FILTRO INTELIGENTE
-        let currentCategoriaFiltro = 'Todos';
-        let currentBuscaFiltro = '';
+        
+        let checklist = [];
+        try {
+            const lCheck = JSON.parse(localStorage.getItem('checklist'));
+            if (Array.isArray(lCheck)) checklist = lCheck;
+        } catch(e) {}
 
         function initApp() {
             const h = new Date().getHours(); document.getElementById('greeting-title').innerText = `${h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'}, Theo`;
-            renderizarEstadoCaixa(); carregarEstoque(); renderChecklist();
+            renderizarEstadoCaixa(); 
+            carregarEstoque(); 
+            renderChecklist();
             if(caixaAberto) carregarBI(); 
             carregarLoja();
-            
-            // Listener do Mockup
-            const colorInput = document.getElementById('loja-cor');
-            if(colorInput) {
-                colorInput.addEventListener('input', (e) => { 
-                    document.getElementById('hex-label').innerText = e.target.value.toUpperCase(); 
-                    atualizarMockup();
-                });
-            }
         }
 
         function mudarAba(aba) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById(`aba-${aba}`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); 
+            document.getElementById(`aba-${aba}`).classList.add('active');
             
             document.querySelectorAll('.nav-link').forEach(btn => { btn.classList.remove('active', 'text-stone-900', 'border-stone-900'); btn.classList.add('text-stone-400', 'border-transparent'); });
             document.querySelectorAll(`.link-${aba}`).forEach(btn => { btn.classList.add('active', 'text-stone-900', 'border-stone-900'); btn.classList.remove('text-stone-400', 'border-transparent'); });
 
-            document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('text-stone-900'); btn.classList.add('text-stone-400'); const i = btn.querySelector('i'); if(i) i.classList.replace('ph-fill', 'ph'); });
+            // Trata a barra mobile de forma segura
+            document.querySelectorAll('nav .nav-link').forEach(btn => { btn.classList.remove('text-stone-900'); btn.classList.add('text-stone-400'); const i = btn.querySelector('i'); if(i) i.classList.replace('ph-fill', 'ph'); });
             const mobileBtn = document.getElementById(`btn-nav-${aba === 'relatorios' ? 'relat' : aba}`);
             if(mobileBtn) { mobileBtn.classList.add('text-stone-900'); mobileBtn.classList.remove('text-stone-400'); const i = mobileBtn.querySelector('i'); if(i) i.classList.replace('ph', 'ph-fill'); }
 
@@ -329,10 +288,9 @@
             if(aba === 'relatorios') carregarExtrato();
         }
 
-        // --- CAIXA ---
+        // --- DASHBOARD E CAIXA ---
         function renderizarEstadoCaixa() {
-            const telaAb = document.getElementById('tela-abertura-caixa'); const dash = document.getElementById('dashboard-conteudo');
-            const dot = document.getElementById('status-dot'); const txt = document.getElementById('status-texto');
+            const telaAb = document.getElementById('tela-abertura-caixa'); const dash = document.getElementById('dashboard-conteudo'); const dot = document.getElementById('status-dot'); const txt = document.getElementById('status-texto');
             if(caixaAberto) { telaAb.classList.add('hidden'); dash.classList.remove('hidden'); dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse"; txt.innerText = "Aberto"; } 
             else { telaAb.classList.remove('hidden'); dash.classList.add('hidden'); dot.className = "w-2 h-2 rounded-full bg-red-500"; txt.innerText = "Fechado"; }
         }
@@ -340,137 +298,99 @@
         function abrirModalFecharCaixa() { document.getElementById('resumo-fecha-caixa').innerText = (fundoTroco + parseFloat(document.getElementById('bi-lucro').innerText.replace(',','.'))).toFixed(2); document.getElementById('modal-fechar-caixa').classList.remove('hidden'); }
         function confirmarFechamento() { caixaAberto = false; fundoTroco = 0; localStorage.setItem('caixaAberto', 'false'); localStorage.setItem('fundoTroco', '0'); fecharModais(); renderizarEstadoCaixa(); mudarAba('caixa'); }
 
-        // --- DASHBOARD BI ---
-        async function carregarBI() { if(!caixaAberto) return; const res = await apiFetch('/api/movimentos'); todosMovimentos = await res.json() || []; atualizarDashboard(); }
+        async function carregarBI() { 
+            if(!caixaAberto) return; 
+            const res = await apiFetch('/api/movimentos'); 
+            if(res && res.ok) { 
+                const txt = await res.text(); 
+                try { const parsed = JSON.parse(txt); todosMovimentos = Array.isArray(parsed) ? parsed : []; } catch(e) { todosMovimentos = []; }
+                atualizarDashboard(); 
+            } 
+        }
+
         function atualizarDashboard() {
             const agora = new Date(); let recHoje = 0; let despHoje = 0; let rec7d = 0; let desp7d = 0; let diasAgrupados = {};
             for(let i=6; i>=0; i--) { let d = new Date(); d.setDate(d.getDate() - i); diasAgrupados[d.toISOString().split('T')[0]] = { rec: 0, desp: 0 }; }
-
-            todosMovimentos.forEach(m => {
-                const dataM = new Date(m.data_mov); const dataIso = m.data_mov.split('T')[0]; const diffTime = Math.abs(agora - dataM); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if(diffDays <= 1 || dataIso === agora.toISOString().split('T')[0]) { if(m.tipo === 'ENTRADA') recHoje += m.valor; else despHoje += m.valor; }
-                if(diffDays <= 7) { if(m.tipo === 'ENTRADA') rec7d += m.valor; else desp7d += m.valor; if(diasAgrupados[dataIso] !== undefined) { if(m.tipo === 'ENTRADA') diasAgrupados[dataIso].rec += m.valor; else diasAgrupados[dataIso].desp += m.valor; } }
-            });
+            
+            if (Array.isArray(todosMovimentos)) {
+                todosMovimentos.forEach(m => {
+                    const dataM = new Date(m.data_mov); const dataIso = m.data_mov.split('T')[0]; const diffTime = Math.abs(agora - dataM); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if(diffDays <= 1 || dataIso === agora.toISOString().split('T')[0]) { if(m.tipo === 'ENTRADA') recHoje += m.valor; else despHoje += m.valor; }
+                    if(diffDays <= 7) { if(m.tipo === 'ENTRADA') rec7d += m.valor; else desp7d += m.valor; if(diasAgrupados[dataIso] !== undefined) { if(m.tipo === 'ENTRADA') diasAgrupados[dataIso].rec += m.valor; else diasAgrupados[dataIso].desp += m.valor; } }
+                });
+            }
 
             const lucroHoje = recHoje - despHoje;
             document.getElementById('dash-gaveta').innerText = fundoTroco.toFixed(2); document.getElementById('dash-saldo-total').innerText = (fundoTroco + lucroHoje).toFixed(2);
             document.getElementById('bi-receita').innerText = recHoje.toFixed(2); document.getElementById('bi-despesas').innerText = despHoje.toFixed(2); document.getElementById('bi-lucro').innerText = lucroHoje.toFixed(2);
-
+            
             const percRec = Math.min((recHoje / 1000) * 100, 100) || 0; document.getElementById('perc-receita').innerText = percRec.toFixed(0) + '%'; document.getElementById('gauge-receita').setAttribute('stroke-dasharray', `${percRec}, 100`);
             const percDesp = recHoje > 0 ? Math.min((despHoje / recHoje) * 50, 50) : (despHoje>0?50:0); document.getElementById('perc-despesa').innerText = recHoje>0 ? ((despHoje/recHoje)*100).toFixed(0)+'%' : '--%'; document.getElementById('gauge-despesa').setAttribute('stroke-dasharray', `${percDesp}, 100`);
             const percLucro = recHoje > 0 ? ((lucroHoje/recHoje)*100) : 0; document.getElementById('perc-lucro').innerText = percLucro.toFixed(0)+'%'; document.getElementById('gauge-lucro').setAttribute('stroke-dasharray', `${Math.max(percLucro,0)}, 100`);
-
-            const vH = todosMovimentos.filter(m => m.tipo==='ENTRADA' && m.data_mov.split('T')[0] === agora.toISOString().split('T')[0]);
-            document.getElementById('dash-ticket').innerText = vH.length > 0 ? (recHoje/vH.length).toFixed(2) : "0,00";
-            document.getElementById('resumo-rec-7d').innerText = rec7d.toFixed(2); document.getElementById('resumo-desp-7d').innerText = desp7d.toFixed(2); document.getElementById('resumo-lucro-7d').innerText = (rec7d - desp7d).toFixed(2);
+            
+            const vH = (Array.isArray(todosMovimentos)) ? todosMovimentos.filter(m => m.tipo==='ENTRADA' && m.data_mov.split('T')[0] === agora.toISOString().split('T')[0]) : [];
+            document.getElementById('dash-ticket').innerText = vH.length > 0 ? (recHoje/vH.length).toFixed(2) : "0,00"; document.getElementById('resumo-rec-7d').innerText = rec7d.toFixed(2); document.getElementById('resumo-desp-7d').innerText = desp7d.toFixed(2); document.getElementById('resumo-lucro-7d').innerText = (rec7d - desp7d).toFixed(2);
             renderDualBarChart(diasAgrupados);
         }
         function renderDualBarChart(diasAgrupados) {
             const ctx = document.getElementById('biBarChart').getContext('2d'); const labels = Object.keys(diasAgrupados).map(d => d.split('-')[2]+'/'+d.split('-')[1]); const dataRec = Object.keys(diasAgrupados).map(d => diasAgrupados[d].rec); const dataDesp = Object.keys(diasAgrupados).map(d => diasAgrupados[d].desp);
-            if(barChartInst) barChartInst.destroy();
-            barChartInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Receita', data: dataRec, backgroundColor: '#059669', borderRadius: 4 }, { label: 'Despesas', data: dataDesp, backgroundColor: '#dc2626', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } }, scales: { x: { grid: { display: false } }, y: { border: { dash: [4, 4] }, grid: { color: '#f4f4f5' } } } } });
+            if(barChartInst) barChartInst.destroy(); barChartInst = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [ { label: 'Receita', data: dataRec, backgroundColor: '#059669', borderRadius: 4 }, { label: 'Despesas', data: dataDesp, backgroundColor: '#dc2626', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } }, scales: { x: { grid: { display: false } }, y: { border: { dash: [4, 4] }, grid: { color: '#f4f4f5' } } } } });
         }
 
-        // --- RELATÓRIOS ---
-        function carregarExtrato() {
-            const c = document.getElementById('lista-extrato-dias'); c.innerHTML = '';
-            if(todosMovimentos.length === 0) { c.innerHTML = '<p class="text-sm text-stone-500">Sem movimentações recentes.</p>'; return; }
-            const grupos = {}; todosMovimentos.forEach(m => { const d = m.data_mov.split('T')[0]; if(!grupos[d]) grupos[d] = { movs: [], sub: 0 }; grupos[d].movs.push(m); if(m.tipo === 'ENTRADA') grupos[d].sub += m.valor; else grupos[d].sub -= m.valor; });
-            Object.keys(grupos).sort((a,b) => new Date(b) - new Date(a)).forEach(dataISO => {
-                const diaData = grupos[dataISO]; const [ano, mes, dia] = dataISO.split('-');
-                let htmlDia = `<div class="mb-6"><div class="flex justify-between items-center border-b border-stone-200 pb-2 mb-3 bg-stone-50 px-4 py-3 rounded-xl"><h4 class="font-bold text-xs text-stone-600 uppercase tracking-widest">${dia}/${mes}/${ano}</h4><span class="font-bold text-sm ${diaData.sub >= 0 ? 'text-emerald-600' : 'text-red-600'}">${diaData.sub >= 0 ? '+' : ''} R$ ${diaData.sub.toFixed(2)}</span></div><div class="space-y-3">`;
-                diaData.movs.forEach(m => { const isE = m.tipo === 'ENTRADA'; htmlDia += `<div class="flex justify-between items-center px-4 hover:bg-stone-50 p-2 rounded-lg transition-colors"><div><p class="font-bold text-sm text-stone-800">${m.descricao}</p><p class="text-xs text-stone-400">${m.data_mov.split('T')[1].substring(0,5)}</p></div><p class="font-serif font-bold text-sm ${isE ? 'text-stone-800' : 'text-stone-400'}">${isE ? '+' : '-'} R$ ${m.valor.toFixed(2)}</p></div>`; });
-                htmlDia += `</div></div>`; c.innerHTML += htmlDia;
-            });
-        }
-        function exportarCSV() { if(todosMovimentos.length === 0) return alert("Sem dados."); let csv = "Data;Hora;Movimento;Tipo;Valor_R$\n"; todosMovimentos.forEach(m => { csv += `${m.data_mov.split('T')[0]};${m.data_mov.split('T')[1].substring(0,5)};${m.descricao};${m.tipo};${m.valor.toFixed(2).replace('.', ',')}\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Extrato_ERP_${new Date().toISOString().split('T')[0]}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link); }
-
-        // --- ESTOQUE COM FILTRO E BUSCA MÁGICA ---
+        // --- ESTOQUE BLINDADO ---
         async function carregarEstoque() {
-            if(produtosCached.length === 0) {
+            if(produtosCached.length === 0) { 
                 const res = await apiFetch('/api/produtos'); 
-                produtosCached = await res.json() || [];
+                if(res && res.ok) { 
+                    const txt = await res.text(); 
+                    try { const parsed = JSON.parse(txt); produtosCached = Array.isArray(parsed) ? parsed : []; } catch(e) { produtosCached = []; } 
+                } 
             }
             atualizarTelaEstoque();
         }
-
         function setCategoriaFiltro(cat) { currentCategoriaFiltro = cat; atualizarTelaEstoque(); }
         function setBuscaFiltro(val) { currentBuscaFiltro = val.toLowerCase(); atualizarTelaEstoque(); }
-
         function atualizarTelaEstoque() {
             const grid = document.getElementById('grid-estoque'); const repor = document.getElementById('lista-reposicao'); const sel = document.getElementById('venda-produto-id');
             grid.innerHTML = ''; repor.innerHTML = ''; sel.innerHTML = '<option value="">Selecione um item...</option>';
             
+            if (!Array.isArray(produtosCached)) produtosCached = []; // Segurança extra
+            
             const categorias = ['Todos', ...new Set(produtosCached.map(p => p.categoria || 'Geral'))];
             const divFiltros = document.getElementById('filtros-categoria'); divFiltros.innerHTML = '';
-            categorias.forEach(cat => { 
-                const ativo = (currentCategoriaFiltro === cat); 
-                divFiltros.innerHTML += `<button onclick="setCategoriaFiltro('${cat}')" class="snap-center flex-shrink-0 px-5 py-2 rounded-full text-[10px] tracking-widest uppercase font-bold transition-colors border shadow-sm ${ativo ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'}">${cat}</button>`; 
-            });
+            categorias.forEach(cat => { const ativo = (currentCategoriaFiltro === cat); divFiltros.innerHTML += `<button onclick="setCategoriaFiltro('${cat}')" class="snap-center flex-shrink-0 px-5 py-2 rounded-full text-[10px] tracking-widest uppercase font-bold transition-colors border shadow-sm ${ativo ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'}">${cat}</button>`; });
 
             let valPatrimonio = 0; let f = 0;
-            
             produtosCached.forEach(p => {
-                valPatrimonio += (p.quantidade * p.custo);
-                const b = p.quantidade <= p.estoque_minimo; if(b) f++;
-                
+                valPatrimonio += (p.quantidade * p.custo); const b = p.quantidade <= p.estoque_minimo; if(b) f++;
                 if(b) repor.innerHTML += `<div class="bg-white rounded-2xl p-4 border border-stone-200 flex justify-between items-center"><div class="flex items-center gap-3"><i class="ph-fill ph-warning-circle text-red-500 text-3xl"></i><div><p class="font-serif text-lg text-stone-900">${p.nome}</p><p class="text-[10px] font-bold text-red-500 uppercase tracking-widest">Restam ${p.quantidade} un</p></div></div><button onclick="abrirModalRepor(${p.id}, '${p.nome}')" class="bg-stone-900 text-white text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-full shadow-md active:scale-95">Repor</button></div>`;
                 sel.innerHTML += `<option value="${p.id}">${p.nome} (R$ ${p.preco.toFixed(2)})</option>`;
 
-                // Filtro Duplo
-                const catReal = p.categoria || 'Geral';
-                const matchCat = (currentCategoriaFiltro === 'Todos' || catReal === currentCategoriaFiltro);
-                const matchBusca = p.nome.toLowerCase().includes(currentBuscaFiltro);
-
+                const catReal = p.categoria || 'Geral'; const matchCat = (currentCategoriaFiltro === 'Todos' || catReal === currentCategoriaFiltro); const matchBusca = p.nome.toLowerCase().includes(currentBuscaFiltro);
                 if(matchCat && matchBusca) {
                     let htmlImg = `<div class="bg-stone-50 w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"><i class="ph ph-package text-3xl text-stone-300"></i></div>`;
                     if(p.url_imagem && p.url_imagem.length > 10) { htmlImg = `<img src="${p.url_imagem}" class="w-16 h-16 object-cover rounded-2xl border border-stone-200 shrink-0">`; }
-
                     grid.innerHTML += `<div class="bg-white rounded-[2rem] p-5 shadow-sm border border-stone-200 flex flex-col justify-between hover:shadow-md transition-shadow"><div class="flex justify-between items-start mb-4">${htmlImg}<div class="flex gap-2"><button onclick="abrirModalProduto(${p.id})" class="text-stone-400 hover:text-stone-800 bg-stone-50 p-2 rounded-xl transition-colors"><i class="ph-fill ph-pencil-simple text-xl"></i></button><button onclick="deletarProduto(${p.id}, '${p.nome}')" class="text-stone-400 hover:text-red-500 bg-stone-50 p-2 rounded-xl transition-colors"><i class="ph-fill ph-trash text-xl"></i></button></div></div><div><p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">${catReal}</p><h4 class="font-serif font-bold text-stone-900 text-xl leading-tight mb-1">${p.nome}</h4><p class="text-stone-800 font-bold mb-3 font-serif">R$ ${p.preco.toFixed(2)}</p><div class="w-fit text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-lg ${b ? 'bg-red-50 text-red-600' : 'bg-stone-100 text-stone-600'}">${p.quantidade} un</div></div></div>`;
                 }
             });
             document.getElementById('estoque-patrimonio').innerText = valPatrimonio.toFixed(2);
             const badgeM = document.getElementById('badge-repor-mobile'); if(badgeM) badgeM.classList.toggle('hidden', f === 0);
-            const badgeD = document.getElementById('badge-repor'); if(badgeD) badgeD.classList.toggle('hidden', f === 0);
         }
 
+        // --- CHECKLIST ---
         function renderChecklist() { const lista = document.getElementById('lista-tarefas'); lista.innerHTML = ''; checklist.forEach((item, index) => { lista.innerHTML += `<label class="check-item flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-200 cursor-pointer"><div class="flex items-center gap-4"><input type="checkbox" class="hidden" ${item.done ? 'checked' : ''} onchange="toggleTarefa(${index})"><div class="w-6 h-6 rounded-md border border-stone-300 flex items-center justify-center transition-colors"><i class="ph-fill ph-check text-white opacity-0 text-sm"></i></div><span class="text-sm font-medium text-stone-700 transition-colors">${item.text}</span></div><button type="button" onclick="delTarefa(${index})" class="text-stone-300 hover:text-red-400 p-1"><i class="ph ph-trash text-lg"></i></button></label>`; }); localStorage.setItem('checklist', JSON.stringify(checklist)); }
         function addTarefa() { const t = document.getElementById('nova-tarefa').value; if(!t) return; checklist.push({ text: t, done: false }); document.getElementById('nova-tarefa').value = ''; renderChecklist(); }
         function toggleTarefa(idx) { checklist[idx].done = !checklist[idx].done; renderChecklist(); }
         function delTarefa(idx) { checklist.splice(idx, 1); renderChecklist(); }
 
-        // --- LOJA & UPLOAD MÍDIA ---
-        async function carregarLoja() { const res = await apiFetch('/api/loja'); const l = await res.json(); document.getElementById('loja-nome').value = l.nome_loja || ''; document.getElementById('loja-whats').value = l.whatsapp || ''; document.getElementById('loja-cor').value = l.cor_hex || '#1c1917'; document.getElementById('hex-label').innerText = (l.cor_hex || '#1c1917').toUpperCase(); document.getElementById('loja-insta').value = l.instagram || ''; document.getElementById('loja-msg').value = l.msg_suporte || ''; atualizarMockup(); }
-        async function salvarConfigLoja() { const p = { nome_loja: document.getElementById('loja-nome').value, whatsapp: document.getElementById('loja-whats').value, cor_hex: document.getElementById('loja-cor').value, instagram: document.getElementById('loja-insta').value, msg_suporte: document.getElementById('loja-msg').value }; await apiFetch('/api/loja', { method: 'POST', body: JSON.stringify(p) }); alert("Design Salvo com Sucesso!"); }
+        // --- LOJA E MOCKUP ---
+        async function carregarLoja() { const res = await apiFetch('/api/loja'); if(res && res.ok) { const txt = await res.text(); let l = {}; try { l = JSON.parse(txt); } catch(e){} document.getElementById('loja-nome').value = l.nome_loja || ''; document.getElementById('loja-whats').value = l.whatsapp || ''; document.getElementById('loja-cor').value = l.cor_hex || '#1c1917'; document.getElementById('hex-label').innerText = (l.cor_hex || '#1c1917').toUpperCase(); document.getElementById('loja-insta').value = l.instagram || ''; document.getElementById('loja-msg').value = l.msg_suporte || ''; atualizarMockup(); } }
+        async function salvarConfigLoja() { const p = { nome_loja: document.getElementById('loja-nome').value, whatsapp: document.getElementById('loja-whats').value, cor_hex: document.getElementById('loja-cor').value, instagram: document.getElementById('loja-insta').value, msg_suporte: document.getElementById('loja-msg').value }; const res = await apiFetch('/api/loja', { method: 'POST', body: JSON.stringify(p) }); if(res && res.ok) { alert("Design Salvo com Sucesso!"); } else { alert("Falha ao salvar. Verifique a conexão com o servidor."); } }
+        function atualizarMockup() { document.getElementById('mock-nome').innerText = document.getElementById('loja-nome').value || "Sua Marca"; document.getElementById('mock-insta').innerText = document.getElementById('loja-insta').value || "@instagram"; document.getElementById('mock-btn-color').style.backgroundColor = document.getElementById('loja-cor').value; document.getElementById('mock-msg').innerText = document.getElementById('loja-msg').value || "Sua mensagem de rodapé."; }
+        function processarImagem(event) { const file = event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = function(e) { const b64 = e.target.result; document.getElementById('prod-img-base64').value = b64; document.getElementById('preview-img').src = b64; document.getElementById('preview-img').classList.remove('hidden'); document.getElementById('upload-placeholder').classList.add('hidden'); document.getElementById('btn-remover-img').classList.remove('hidden'); }; reader.readAsDataURL(file); } }
+        function removerImagemPreview(event) { event.preventDefault(); document.getElementById('prod-img-base64').value = ""; document.getElementById('preview-img').src = ""; document.getElementById('preview-img').classList.add('hidden'); document.getElementById('upload-placeholder').classList.remove('hidden'); document.getElementById('btn-remover-img').classList.add('hidden'); }
 
-        function atualizarMockup() {
-            document.getElementById('mock-nome').innerText = document.getElementById('loja-nome').value || "Boutique";
-            document.getElementById('mock-insta').innerText = document.getElementById('loja-insta').value || "@instagram";
-            document.getElementById('mock-btn-color').style.backgroundColor = document.getElementById('loja-cor').value;
-            document.getElementById('mock-msg').innerText = document.getElementById('loja-msg').value || "Mensagem...";
-        }
-
-        function processarImagem(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const b64 = e.target.result;
-                    document.getElementById('prod-img-base64').value = b64;
-                    document.getElementById('preview-img').src = b64;
-                    document.getElementById('preview-img').classList.remove('hidden');
-                    document.getElementById('upload-placeholder').classList.add('hidden');
-                    document.getElementById('btn-remover-img').classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        function removerImagemPreview(event) {
-            event.preventDefault(); document.getElementById('prod-img-base64').value = ""; document.getElementById('preview-img').src = "";
-            document.getElementById('preview-img').classList.add('hidden'); document.getElementById('upload-placeholder').classList.remove('hidden'); document.getElementById('btn-remover-img').classList.add('hidden');
-        }
-
-        // --- CRUD E MODAIS ---
+        // --- TRANSAÇÕES SEGURAS ---
         function setPagamento(tipo, btn) { pagamentoSelecionado = tipo; document.querySelectorAll('.btn-pagamento').forEach(b => b.classList.remove('ativo')); btn.classList.add('ativo'); }
         function atualizarTotalVenda() { const id = document.getElementById('venda-produto-id').value; const p = produtosCached.find(prod => prod.id == id); document.getElementById('venda-total').innerText = p ? (p.preco * (parseInt(document.getElementById('venda-qtd').value)||0)).toFixed(2) : "0,00"; }
         function fecharModais() { document.querySelectorAll('.glass-modal').forEach(m => m.classList.add('hidden')); }
@@ -479,28 +399,41 @@
         function abrirModalRepor(id, nome) { fecharModais(); document.getElementById('modal-repor-item').classList.remove('hidden'); document.getElementById('repor-id').value = id; document.getElementById('repor-nome-txt').innerText = `${nome}`; document.getElementById('repor-qtd').value = ''; document.getElementById('repor-custo').value = ''; }
         
         function abrirModalProduto(id = null) { 
-            fecharModais(); document.getElementById('modal-produto').classList.remove('hidden'); 
-            removerImagemPreview({preventDefault: ()=>{}}); // Limpa foto ao abrir
-            
+            fecharModais(); document.getElementById('modal-produto').classList.remove('hidden'); removerImagemPreview({preventDefault: ()=>{}});
             if(id) { 
-                const p = produtosCached.find(x => x.id === id); 
-                document.getElementById('titulo-modal-produto').innerText = "Editar Item"; 
-                document.getElementById('prod-id').value = p.id; document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-cat').value = p.categoria || 'Geral'; document.getElementById('prod-preco').value = p.preco; document.getElementById('prod-custo').value = p.custo; document.getElementById('prod-qtd').value = p.quantidade; document.getElementById('prod-min').value = p.estoque_minimo; document.getElementById('prod-qtd').disabled = true; 
+                const p = produtosCached.find(x => x.id === id); document.getElementById('titulo-modal-produto').innerText = "Editar Item"; document.getElementById('prod-id').value = p.id; document.getElementById('prod-nome').value = p.nome; document.getElementById('prod-cat').value = p.categoria || 'Geral'; document.getElementById('prod-preco').value = p.preco; document.getElementById('prod-custo').value = p.custo; document.getElementById('prod-qtd').value = p.quantidade; document.getElementById('prod-min').value = p.estoque_minimo; document.getElementById('prod-qtd').disabled = true; 
                 if(p.url_imagem && p.url_imagem.length > 10) { document.getElementById('prod-img-base64').value = p.url_imagem; document.getElementById('preview-img').src = p.url_imagem; document.getElementById('preview-img').classList.remove('hidden'); document.getElementById('upload-placeholder').classList.add('hidden'); document.getElementById('btn-remover-img').classList.remove('hidden'); }
-            } else { 
-                document.getElementById('titulo-modal-produto').innerText = "Novo Item"; 
-                document.getElementById('prod-id').value = ""; document.querySelectorAll('#modal-produto input[type="text"], #modal-produto input[type="number"]').forEach(i => i.value = ''); document.getElementById('prod-cat').value = 'Geral'; document.getElementById('prod-qtd').disabled = false; document.getElementById('prod-min').value = 5; 
-            } 
+            } else { document.getElementById('titulo-modal-produto').innerText = "Novo Item"; document.getElementById('prod-id').value = ""; document.querySelectorAll('#modal-produto input[type="text"], #modal-produto input[type="number"]').forEach(i => i.value = ''); document.getElementById('prod-cat').value = 'Geral'; document.getElementById('prod-qtd').disabled = false; document.getElementById('prod-min').value = 5; } 
         }
 
-        async function salvarProduto() { const id = document.getElementById('prod-id').value; const url = id ? '/api/produtos/editar' : '/api/produtos/novo'; const dados = { id: parseInt(id)||0, nome: document.getElementById('prod-nome').value, categoria: document.getElementById('prod-cat').value, preco: parseFloat(document.getElementById('prod-preco').value), custo: parseFloat(document.getElementById('prod-custo').value)||0, quantidade: parseInt(document.getElementById('prod-qtd').value)||0, estoque_minimo: parseInt(document.getElementById('prod-min').value)||5, url_imagem: document.getElementById('prod-img-base64').value }; const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(dados) }); if(res.ok) { produtosCached = []; fecharModais(); carregarEstoque(); } }
-        async function deletarProduto(id, nome) { if(!confirm(`Excluir '${nome}' permanentemente do banco de dados?`)) return; const res = await apiFetch('/api/produtos/deletar', { method: 'POST', body: JSON.stringify({id}) }); if(res.ok) { produtosCached = []; carregarEstoque(); } else { alert("Erro ao excluir."); } }
-        async function confirmarReposicao() { const id = parseInt(document.getElementById('repor-id').value); const qtd = parseInt(document.getElementById('repor-qtd').value); const custo = parseFloat(document.getElementById('repor-custo').value); if(!qtd || !custo) return; const res = await apiFetch('/api/produtos/repor', { method: 'POST', body: JSON.stringify({ id, quantidade: qtd, custo_total: custo }) }); if(res.ok) { produtosCached = []; fecharModais(); carregarEstoque(); if(caixaAberto) carregarBI(); } }
-        async function confirmarSaida() { const val = parseFloat(document.getElementById('saida-valor').value); const desc = document.getElementById('saida-desc').value; if(!val || !desc) return; await apiFetch('/api/caixa/movimento', { method: 'POST', body: JSON.stringify({ tipo: 'SAIDA', descricao: desc, valor: val }) }); fecharModais(); carregarBI(); document.getElementById('saida-valor').value = ''; document.getElementById('saida-desc').value = ''; }
-        async function confirmarVenda() { const id = parseInt(document.getElementById('venda-produto-id').value); const qtd = parseInt(document.getElementById('venda-qtd').value); if(!id || !qtd) return; const res = await apiFetch('/api/vender', { method: 'POST', body: JSON.stringify({ id, quantidade: qtd }) }); if(res.ok) { const dados = await res.json(); await apiFetch('/api/caixa/movimento', { method: 'POST', body: JSON.stringify({ tipo: 'ENTRADA', descricao: `Venda: ${qtd}x ${dados.produto} [${pagamentoSelecionado}]`, valor: dados.total }) }); produtosCached = []; fecharModais(); carregarBI(); carregarEstoque(); document.getElementById('modal-recibo').classList.remove('hidden'); document.getElementById('recibo-total').innerText = dados.total.toFixed(2); document.getElementById('recibo-produto').innerText = `${qtd}x ${dados.produto}`; dadosReciboLocal = { p: dados.produto, q: qtd, t: dados.total, pag: pagamentoSelecionado }; } else { alert("Erro: Estoque insuficiente."); } }
-        function enviarZap() { const tel = document.getElementById('zap-cliente').value.replace(/\D/g, ''); if(tel.length < 10) return; window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(`🧾 *Recibo de Compra*\n\n🛍️ *Item:* ${dadosReciboLocal.q}x ${dadosReciboLocal.p}\n💳 *Pagamento:* ${dadosReciboLocal.pag}\n💰 *Total:* R$ ${dadosReciboLocal.t.toFixed(2)}\n\nObrigado pela preferência!`)}`, '_blank'); fecharModais(); }
-        function logout() { localStorage.removeItem('token'); window.location.href='/login.html'; }
+        async function salvarProduto() { 
+            const id = document.getElementById('prod-id').value; const url = id ? '/api/produtos/editar' : '/api/produtos/novo'; 
+            const dados = { id: parseInt(id)||0, nome: document.getElementById('prod-nome').value, categoria: document.getElementById('prod-cat').value, preco: parseFloat(document.getElementById('prod-preco').value)||0, custo: parseFloat(document.getElementById('prod-custo').value)||0, quantidade: parseInt(document.getElementById('prod-qtd').value)||0, estoque_minimo: parseInt(document.getElementById('prod-min').value)||5, url_imagem: document.getElementById('prod-img-base64').value }; 
+            const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(dados) }); 
+            if(res && res.ok) { produtosCached = []; fecharModais(); carregarEstoque(); } else { alert("Erro ao salvar produto. Verifique a conexão com o servidor Go."); }
+        }
 
+        async function deletarProduto(id, nome) { if(!confirm(`Excluir '${nome}' permanentemente?`)) return; const res = await apiFetch('/api/produtos/deletar', { method: 'POST', body: JSON.stringify({id}) }); if(res && res.ok) { produtosCached = []; carregarEstoque(); } else { alert("Erro ao excluir."); } }
+        async function confirmarReposicao() { const id = parseInt(document.getElementById('repor-id').value); const qtd = parseInt(document.getElementById('repor-qtd').value); const custo = parseFloat(document.getElementById('repor-custo').value); if(!qtd || !custo) return; const res = await apiFetch('/api/produtos/repor', { method: 'POST', body: JSON.stringify({ id, quantidade: qtd, custo_total: custo }) }); if(res && res.ok) { produtosCached = []; fecharModais(); carregarEstoque(); if(caixaAberto) carregarBI(); } }
+        async function confirmarSaida() { const val = parseFloat(document.getElementById('saida-valor').value); const desc = document.getElementById('saida-desc').value; if(!val || !desc) return; await apiFetch('/api/caixa/movimento', { method: 'POST', body: JSON.stringify({ tipo: 'SAIDA', descricao: desc, valor: val }) }); fecharModais(); carregarBI(); document.getElementById('saida-valor').value = ''; document.getElementById('saida-desc').value = ''; }
+        async function confirmarVenda() { const id = parseInt(document.getElementById('venda-produto-id').value); const qtd = parseInt(document.getElementById('venda-qtd').value); if(!id || !qtd) return; const res = await apiFetch('/api/vender', { method: 'POST', body: JSON.stringify({ id, quantidade: qtd }) }); if(res && res.ok) { const txt = await res.text(); const dados = JSON.parse(txt); await apiFetch('/api/caixa/movimento', { method: 'POST', body: JSON.stringify({ tipo: 'ENTRADA', descricao: `Venda: ${qtd}x ${dados.produto} [${pagamentoSelecionado}]`, valor: dados.total }) }); produtosCached = []; fecharModais(); carregarBI(); carregarEstoque(); document.getElementById('modal-recibo').classList.remove('hidden'); document.getElementById('recibo-total').innerText = dados.total.toFixed(2); document.getElementById('recibo-produto').innerText = `${qtd}x ${dados.produto}`; dadosReciboLocal = { p: dados.produto, q: qtd, t: dados.total, pag: pagamentoSelecionado }; } else { alert("Erro: Estoque insuficiente."); } }
+        
+        function carregarExtrato() {
+            const c = document.getElementById('lista-extrato-dias'); c.innerHTML = '';
+            if(!Array.isArray(todosMovimentos) || todosMovimentos.length === 0) { c.innerHTML = '<p class="text-sm text-stone-500">Sem movimentações recentes.</p>'; return; }
+            const grupos = {}; todosMovimentos.forEach(m => { const d = m.data_mov.split('T')[0]; if(!grupos[d]) grupos[d] = { movs: [], sub: 0 }; grupos[d].movs.push(m); if(m.tipo === 'ENTRADA') grupos[d].sub += m.valor; else grupos[d].sub -= m.valor; });
+            Object.keys(grupos).sort((a,b) => new Date(b) - new Date(a)).forEach(dataISO => {
+                const diaData = grupos[dataISO]; const [ano, mes, dia] = dataISO.split('-');
+                let htmlDia = `<div class="mb-6"><div class="flex justify-between items-center border-b border-stone-200 pb-2 mb-3 bg-stone-50 px-4 py-3 rounded-xl"><h4 class="font-bold text-xs text-stone-600 uppercase tracking-widest">${dia}/${mes}/${ano}</h4><span class="font-bold text-sm ${diaData.sub >= 0 ? 'text-emerald-600' : 'text-red-600'}">${diaData.sub >= 0 ? '+' : ''} R$ ${diaData.sub.toFixed(2)}</span></div><div class="space-y-3">`;
+                diaData.movs.forEach(m => { const isE = m.tipo === 'ENTRADA'; htmlDia += `<div class="flex justify-between items-center px-4 hover:bg-stone-50 p-2 rounded-lg transition-colors"><div><p class="font-bold text-sm text-stone-800">${m.descricao}</p><p class="text-xs text-stone-400">${m.data_mov.split('T')[1].substring(0,5)}</p></div><p class="font-serif font-bold text-sm ${isE ? 'text-stone-800' : 'text-stone-400'}">${isE ? '+' : '-'} R$ ${m.valor.toFixed(2)}</p></div>`; });
+                htmlDia += `</div></div>`; c.innerHTML += htmlDia;
+            });
+        }
+        function exportarCSV() { if(!Array.isArray(todosMovimentos) || todosMovimentos.length === 0) return alert("Sem dados."); let csv = "Data;Hora;Movimento;Tipo;Valor_R$\n"; todosMovimentos.forEach(m => { csv += `${m.data_mov.split('T')[0]};${m.data_mov.split('T')[1].substring(0,5)};${m.descricao};${m.tipo};${m.valor.toFixed(2).replace('.', ',')}\n`; }); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Extrato_ERP_${new Date().toISOString().split('T')[0]}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+        function enviarZap() { const tel = document.getElementById('zap-cliente').value.replace(/\D/g, ''); if(tel.length < 10) return; window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(`🧾 *Recibo de Compra*\n\n🛍️ *Item:* ${dadosReciboLocal.q}x ${dadosReciboLocal.p}\n💳 *Pagamento:* ${dadosReciboLocal.pag}\n💰 *Total:* R$ ${dadosReciboLocal.t.toFixed(2)}\n\nObrigado pela preferência!`)}`, '_blank'); fecharModais(); }
+        async function logout() { await fetch('/auth/logout', { method: 'POST' }); localStorage.removeItem('caixaAberto'); localStorage.removeItem('fundoTroco'); window.location.href = '/login.html'; }
+
+        // Dá a partida
         initApp();
     </script>
 </body>

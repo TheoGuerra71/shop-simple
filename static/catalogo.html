@@ -3,61 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Catálogo Online</title>
+    <title>Catálogo Oficial</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        /* Fonte Serifada para dar o tom de Grife (Estilo Farm) */
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&family=Inter:wght@300;400;600&display=swap');
         
-        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; }
+        :root { --tema-loja: #1c1917; } /* Cor dinâmica substituída pelo JS */
+        
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; -webkit-tap-highlight-color: transparent; }
         h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
         
-        /* Oculta scrollbar mas mantém rolagem */
         ::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .produto-img { object-fit: cover; width: 100%; height: 350px; background-color: #f5f5f4; }
-        .btn-brand { transition: all 0.3s ease; }
-        .btn-brand:active { transform: scale(0.98); }
+        .produto-img { object-fit: cover; width: 100%; height: 380px; background-color: #f5f5f4; border-radius: 1.5rem; }
+        
+        .btn-tema { background-color: var(--tema-loja); color: white; transition: transform 0.2s; }
+        .btn-tema:active { transform: scale(0.98); }
+        .text-tema { color: var(--tema-loja); }
+        .border-tema { border-color: var(--tema-loja); }
     </style>
 </head>
-<body class="pb-24">
+<body class="pb-28">
 
-    <header class="py-8 px-6 text-center border-b border-stone-200 bg-white sticky top-0 z-40">
-        <h1 id="store-name" class="text-3xl font-bold tracking-tight text-stone-900 mb-2">Boutique</h1>
+    <header class="py-8 px-6 text-center sticky top-0 z-40 bg-[#faf9f6]/95 backdrop-blur-md border-b border-stone-200">
+        <h1 id="store-name" class="text-3xl font-serif font-bold text-stone-900 tracking-tight mb-2">Sua Marca</h1>
         <div class="flex items-center justify-center gap-4 text-stone-500">
-            <a id="link-insta" href="#" target="_blank" class="hidden flex items-center gap-1 text-xs hover:text-stone-900 transition-colors"><i class="ph ph-instagram-logo text-lg"></i> <span id="txt-insta">Instagram</span></a>
+            <a id="link-insta" href="#" target="_blank" class="hidden flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:text-stone-900 transition-colors">
+                <i class="ph-fill ph-instagram-logo text-lg"></i> <span id="txt-insta">Instagram</span>
+            </a>
         </div>
     </header>
 
-    <main class="max-w-md mx-auto w-full pt-6 px-4">
-        <div class="flex gap-3 overflow-x-auto hide-scroll pb-6 mb-2" id="filtro-categorias">
-            </div>
-
-        <div id="grid-produtos" class="grid grid-cols-1 gap-10">
-            <div class="text-center py-20 text-stone-400">
-                <i class="ph ph-spinner-gap animate-spin text-3xl mb-2"></i>
-                <p>Preparando a vitrine...</p>
-            </div>
+    <main class="max-w-md mx-auto w-full pt-6 px-5 relative z-10">
+        
+        <div class="flex gap-2 overflow-x-auto hide-scroll pb-6" id="filtro-categorias">
+            <p class="text-xs text-stone-400 animate-pulse">Carregando vitrine...</p>
         </div>
+
+        <div id="grid-produtos" class="grid grid-cols-1 gap-10"></div>
     </main>
 
-    <div id="barra-carrinho" class="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-4 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+    <div id="barra-carrinho" class="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-5 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         <div class="max-w-md mx-auto flex justify-between items-center">
             <div>
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Sua Sacola</p>
-                <p class="text-lg font-bold text-stone-900"><span id="qtd-sacola">0</span> itens <span class="text-sm font-normal text-stone-500">(R$ <span id="total-sacola">0,00</span>)</span></p>
+                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Sua Sacola</p>
+                <p class="text-xl font-serif text-stone-900"><span id="qtd-sacola">0</span> itens <span class="text-sm font-sans font-bold text-stone-500 ml-1">(R$ <span id="total-sacola">0,00</span>)</span></p>
             </div>
-            <button onclick="enviarPedido()" id="btn-comprar" class="btn-brand text-white px-6 py-3 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
-                Pedir via WhatsApp <i class="ph-fill ph-whatsapp-logo text-lg"></i>
+            <button onclick="enviarPedido()" class="btn-tema px-6 py-4 rounded-full font-bold shadow-lg flex items-center gap-2">
+                Pedir via Whats <i class="ph-fill ph-whatsapp-logo text-xl"></i>
             </button>
         </div>
     </div>
 
     <footer class="text-center py-12 px-6 text-stone-400">
-        <p class="serif italic text-lg mb-2" id="msg-suporte">Estamos aqui para você.</p>
-        <p class="text-xs">© <span id="ano-footer">2026</span>. Todos os direitos reservados.</p>
+        <p class="serif italic text-lg mb-2" id="msg-suporte">Feito com carinho para você.</p>
+        <p class="text-[10px] uppercase tracking-widest font-bold">© <span id="ano-footer">2026</span></p>
     </footer>
 
     <script>
@@ -66,35 +68,41 @@
         let carrinho = [];
 
         async function initLoja() {
-            // 1. Busca configurações da loja
-            const resLoja = await fetch('/api/loja');
-            if(resLoja.ok) {
-                loja = await resLoja.json();
-                document.getElementById('store-name').innerText = loja.nome_loja || "Nossa Loja";
-                if(loja.msg_suporte) document.getElementById('msg-suporte').innerText = loja.msg_suporte;
-                
-                // Aplica a cor customizada no botão do carrinho
-                if(loja.cor_hex) {
-                    document.getElementById('btn-comprar').style.backgroundColor = loja.cor_hex;
-                }
-
-                if(loja.instagram) {
-                    const btnInsta = document.getElementById('link-insta');
-                    btnInsta.classList.remove('hidden');
-                    btnInsta.href = `https://instagram.com/${loja.instagram.replace('@','')}`;
-                    document.getElementById('txt-insta').innerText = loja.instagram;
-                }
-            }
             document.getElementById('ano-footer').innerText = new Date().getFullYear();
 
-            // 2. Busca os Produtos (Apenas os com estoque > 0)
-            const resProd = await fetch('/api/produtos');
-            if(resProd.ok) {
-                const todos = await resProd.json();
-                produtos = todos.filter(p => p.quantidade > 0);
-                renderizarCategorias();
-                renderizarProdutos('Todos');
-            }
+            // 1. Busca configs (Público)
+            try {
+                const resLoja = await fetch('/api/loja');
+                if(resLoja.ok) {
+                    loja = await resLoja.json();
+                    document.getElementById('store-name').innerText = loja.nome_loja || "Boutique";
+                    if(loja.msg_suporte) document.getElementById('msg-suporte').innerText = loja.msg_suporte;
+                    
+                    // Injeta a cor da loja no CSS
+                    if(loja.cor_hex) { document.documentElement.style.setProperty('--tema-loja', loja.cor_hex); }
+
+                    if(loja.instagram) {
+                        const btnInsta = document.getElementById('link-insta');
+                        btnInsta.classList.remove('hidden');
+                        btnInsta.href = `https://instagram.com/${loja.instagram.replace('@','')}`;
+                        document.getElementById('txt-insta').innerText = loja.instagram;
+                    }
+                }
+            } catch(e) { console.error("Erro ao carregar loja", e); }
+
+            // 2. Busca Produtos (Público)
+            try {
+                const resProd = await fetch('/api/produtos');
+                if(resProd.ok) {
+                    const todos = await resProd.json();
+                    // O SEGREDO: Filtra apenas produtos com estoque > 0
+                    produtos = todos.filter(p => p.quantidade > 0);
+                    renderizarCategorias();
+                    renderizarProdutos('Todos');
+                } else {
+                    document.getElementById('filtro-categorias').innerHTML = "<p class='text-sm text-red-500'>Erro ao carregar produtos.</p>";
+                }
+            } catch(e) { console.error("Erro", e); }
         }
 
         function renderizarCategorias() {
@@ -104,7 +112,7 @@
             catContainer.innerHTML = '';
             categorias.forEach(cat => {
                 catContainer.innerHTML += `
-                <button onclick="renderizarProdutos('${cat}')" class="flex-shrink-0 px-5 py-2 rounded-full border border-stone-300 text-xs font-bold text-stone-600 hover:border-stone-900 hover:text-stone-900 transition-colors focus:bg-stone-900 focus:text-white">
+                <button onclick="renderizarProdutos('${cat}')" class="flex-shrink-0 px-6 py-2.5 rounded-full border border-stone-300 text-[10px] uppercase tracking-widest font-bold text-stone-500 transition-colors focus:bg-stone-900 focus:text-white focus:border-stone-900 active:scale-95">
                     ${cat}
                 </button>`;
             });
@@ -117,42 +125,47 @@
             const exibicao = filtroCat === 'Todos' ? produtos : produtos.filter(p => (p.categoria || 'Geral') === filtroCat);
 
             if(exibicao.length === 0) {
-                grid.innerHTML = `<p class="text-center text-stone-500 py-10">Nenhum produto disponível nesta categoria.</p>`;
+                grid.innerHTML = `<div class="text-center py-10"><i class="ph ph-package text-5xl text-stone-300 mb-2"></i><p class="text-sm text-stone-500 font-medium">Nenhum item nesta coleção.</p></div>`;
                 return;
             }
 
             exibicao.forEach(p => {
-                // Placeholder de imagem de luxo genérica se não houver URL
-                const imgUrl = p.url_imagem || 'https://images.unsplash.com/photo-1618220179428-22790b461013?w=500&q=80';
-                
+                // Se o lojista subiu imagem, usa a base64. Se não, exibe placeholder elegante.
+                let htmlImg = `<div class="w-full h-[350px] bg-stone-100 rounded-3xl mb-4 flex flex-col items-center justify-center text-stone-300"><i class="ph ph-image text-5xl mb-2"></i><span class="text-xs font-bold uppercase tracking-widest">Sem Foto</span></div>`;
+                if(p.url_imagem && p.url_imagem.length > 10) {
+                    htmlImg = `<img src="${p.url_imagem}" class="produto-img shadow-sm mb-4">`;
+                }
+
                 grid.innerHTML += `
-                <div class="group cursor-pointer">
-                    <div class="overflow-hidden rounded-2xl mb-4 relative">
-                        <img src="${imgUrl}" alt="${p.nome}" class="produto-img group-hover:scale-105 transition-transform duration-700">
-                        <button onclick="addCarrinho(${p.id}, '${p.nome}', ${p.preco})" class="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-stone-900 w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform">
-                            <i class="ph ph-bag text-xl"></i>
+                <div class="group">
+                    <div class="relative">
+                        ${htmlImg}
+                        <button onclick="addCarrinho(${p.id}, '${p.nome}', ${p.preco}, event)" class="absolute bottom-8 right-4 btn-tema w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform z-10">
+                            <i class="ph-fill ph-bag text-2xl"></i>
                         </button>
                     </div>
-                    <div class="flex justify-between items-start">
+                    <div class="flex justify-between items-start px-2">
                         <div>
                             <p class="text-[10px] text-stone-400 font-bold uppercase tracking-widest mb-1">${p.categoria || 'Geral'}</p>
-                            <h3 class="serif text-xl text-stone-900">${p.nome}</h3>
+                            <h3 class="font-serif text-2xl text-stone-900 leading-tight">${p.nome}</h3>
                         </div>
-                        <p class="font-bold text-stone-900">R$ ${p.preco.toFixed(2)}</p>
+                        <p class="font-sans font-bold text-stone-900 mt-1">R$ ${p.preco.toFixed(2)}</p>
                     </div>
                 </div>`;
             });
         }
 
-        function addCarrinho(id, nome, preco) {
+        function addCarrinho(id, nome, preco, event) {
             const item = carrinho.find(i => i.id === id);
             if(item) { item.qtd++; } else { carrinho.push({ id, nome, preco, qtd: 1 }); }
             atualizarBarra();
             
-            // Feedback visual rápido
+            // Animação de sucesso no botão
             const btn = event.currentTarget;
-            btn.innerHTML = '<i class="ph-fill ph-check text-green-500 text-xl"></i>';
-            setTimeout(() => btn.innerHTML = '<i class="ph ph-bag text-xl"></i>', 1000);
+            const iconOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-check text-2xl"></i>';
+            btn.classList.add('bg-stone-900');
+            setTimeout(() => { btn.innerHTML = iconOriginal; btn.classList.remove('bg-stone-900'); }, 800);
         }
 
         function atualizarBarra() {
@@ -164,8 +177,7 @@
             
             barra.classList.remove('translate-y-full');
             
-            let totalQtd = 0;
-            let totalValor = 0;
+            let totalQtd = 0; let totalValor = 0;
             carrinho.forEach(i => { totalQtd += i.qtd; totalValor += (i.preco * i.qtd); });
             
             document.getElementById('qtd-sacola').innerText = totalQtd;
@@ -173,9 +185,9 @@
         }
 
         function enviarPedido() {
-            if(!loja.whatsapp) return alert("Esta loja ainda não configurou o WhatsApp de vendas.");
+            if(!loja.whatsapp) return alert("Esta loja ainda não habilitou vendas pelo WhatsApp.");
             
-            let texto = `Olá! Gostaria de fazer o seguinte pedido na *${loja.nome_loja}*:\n\n`;
+            let texto = `Olá! Gostaria de fazer o seguinte pedido na vitrine online:\n\n`;
             let total = 0;
             
             carrinho.forEach(i => {
@@ -183,13 +195,12 @@
                 total += (i.preco * i.qtd);
             });
             
-            texto += `\n💰 *Total da Sacola: R$ ${total.toFixed(2)}*`;
+            texto += `\n💰 *Total da Sacola: R$ ${total.toFixed(2)}*\n\nComo faço o pagamento?`;
             
             const numZap = loja.whatsapp.replace(/\D/g, '');
             window.open(`https://wa.me/55${numZap}?text=${encodeURIComponent(texto)}`, '_blank');
         }
 
-        // Start
         initLoja();
     </script>
 </body>
