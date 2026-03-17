@@ -1,35 +1,49 @@
 package handlers
 
 import (
+	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/theo-guerra/simple-shop/internal/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// 1. A ESTRUTURA DO HANDLER (Resolveu o "undefined: AuthHandler")
+// Chave para guardar o ID do usuário na memória do Go (Contexto)
+type contextKey string
+
+const CtxKeyUsuarioID contextKey = "usuario_id"
+
+// Memória temporária para guardar os códigos de recuperação (Simulando uma tabela de tokens)
+var codigosRecuperacao = make(map[string]string)
+
 type AuthHandler struct {
 	DB *sql.DB
 }
 
-// 2. CHAVE DE SEGURANÇA E ESTRUTURA DO TOKEN (Resolveu o "undefined: auth")
-// Em produção, isso ficaria num arquivo .env
+// Chave secreta para assinatura dos tokens JWT
 var jwtKey = []byte("sua_chave_secreta_boutique_2026")
 
+// Claims: O conteúdo do nosso Token JWT
 type Claims struct {
-	Email string `json:"email"`
+	Email     string `json:"email"`
+	UsuarioID int    `json:"usuario_id"`
 	jwt.RegisteredClaims
 }
 
-// --- FUNÇÕES INTERNAS DE JWT ---
+// --- UTILITÁRIOS DE SEGURANÇA ---
 
-func gerarTokenJWT(email string) (string, error) {
+func gerarTokenJWT(email string, usuarioID int) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
-		Email: email,
+		Email:     email,
+		UsuarioID: usuarioID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -38,20 +52,25 @@ func gerarTokenJWT(email string) (string, error) {
 	return token.SignedString(jwtKey)
 }
 
-func validarTokenJWT(tokenString string) (bool, error) {
+func validarTokenJWT(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil || !token.Valid {
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	return claims, nil
 }
 
-// --- ROTAS DA API ---
+func gerarCodigoPIN() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("%06d", n.Int64()+100000)
+}
 
-// Login: Recebe as credenciais e devolve um Cookie Seguro
+// --- HANDLERS PRINCIPAIS ---
+
+// 🔒 LOGIN (REVISADO: Agora compara senhas criptografadas)
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds models.Usuario
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
@@ -59,27 +78,36 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aqui entraria a verificação da senha no Banco de Dados.
-	// Para não travar seu teste agora, estamos autorizando se o email for preenchido.
-	if creds.Email == "" {
-		http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
-		return
-	}
+	var usuarioID int
+	var senhaHash string
 
-	// Gera o Token JWT
-	tokenString, err := gerarTokenJWT(creds.Email)
+	// Busca o usuário no banco
+	err := h.DB.QueryRow("SELECT id, senha FROM usuarios WHERE email = $1", creds.Email).Scan(&usuarioID, &senhaHash)
 	if err != nil {
-		http.Error(w, "Erro interno ao gerar credencial", http.StatusInternalServerError)
+		// Por segurança, não dizemos se o e-mail existe ou não, apenas "erro nas credenciais"
+		http.Error(w, "E-mail ou senha incorretos", http.StatusUnauthorized)
 		return
 	}
 
-	// 🛡️ A MÁGICA: Injeta o Cookie HttpOnly no navegador do usuário
+	// 🛡️ COMPARAÇÃO SEGURA: Verifica se a senha digitada bate com o Hash do banco
+	err = bcrypt.CompareHashAndPassword([]byte(senhaHash), []byte(creds.Senha))
+	if err != nil {
+		http.Error(w, "E-mail ou senha incorretos", http.StatusUnauthorized)
+		return
+	}
+
+	tokenString, err := gerarTokenJWT(creds.Email, usuarioID)
+	if err != nil {
+		http.Error(w, "Erro interno", http.StatusInternalServerError)
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    tokenString,
 		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,  // Impede que ataques de JavaScript (XSS) roubem o token
-		Secure:   false, // Coloque 'true' quando subir para a nuvem com HTTPS
+		HttpOnly: true,
+		Secure:   false, // Em produção (HTTPS), mudar para true
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
 	})
@@ -88,40 +116,120 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"mensagem": "Acesso autorizado"})
 }
 
-// Logout: Mata o Cookie do navegador
-func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    "",
-		Expires:  time.Unix(0, 0), // Data no passado mata o cookie instantaneamente
-		HttpOnly: true,
-		Path:     "/",
-	})
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"mensagem": "Sessão encerrada"})
+// 🆕 CADASTRO DE LOJISTA
+func (h *AuthHandler) Cadastro(w http.ResponseWriter, r *http.Request) {
+	var creds models.Usuario
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
+
+	// Verifica duplicidade
+	var id int
+	err := h.DB.QueryRow("SELECT id FROM usuarios WHERE email = $1", creds.Email).Scan(&id)
+	if err == nil {
+		http.Error(w, "Este e-mail já está cadastrado.", http.StatusConflict)
+		return
+	}
+
+	// Criptografa a senha antes de salvar
+	hashedSenha, err := bcrypt.GenerateFromPassword([]byte(creds.Senha), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Erro ao processar segurança", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = h.DB.Exec("INSERT INTO usuarios (email, senha) VALUES ($1, $2)", creds.Email, string(hashedSenha))
+	if err != nil {
+		http.Error(w, "Erro ao salvar no banco", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
-// --- MIDDLEWARE DE PROTEÇÃO ---
+// 🚪 LOGOUT
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:    "auth_token",
+		Value:   "",
+		Expires: time.Unix(0, 0),
+		Path:    "/",
+	})
+	w.WriteHeader(http.StatusOK)
+}
 
-// AuthMiddleware: Tranca as rotas da API exigindo o Cookie
+// --- FLUXO DE RECUPERAÇÃO DE SENHA (OTP) ---
+
+func (h *AuthHandler) SolicitarRecuperacao(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	var id int
+	err := h.DB.QueryRow("SELECT id FROM usuarios WHERE email = $1", req.Email).Scan(&id)
+	if err != nil {
+		http.Error(w, "E-mail não encontrado.", http.StatusNotFound)
+		return
+	}
+
+	codigo := gerarCodigoPIN()
+	codigosRecuperacao[req.Email] = codigo
+
+	// Simulação de envio por e-mail no console
+	fmt.Printf("\n[EMAIL SIMULADO] Para: %s | Código: %s\n", req.Email, codigo)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *AuthHandler) ValidarRecuperacao(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email     string `json:"email"`
+		Codigo    string `json:"codigo"`
+		NovaSenha string `json:"nova_senha"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	codigoSalvo, existe := codigosRecuperacao[req.Email]
+	if !existe || codigoSalvo != req.Codigo {
+		http.Error(w, "Código inválido ou expirado.", http.StatusUnauthorized)
+		return
+	}
+
+	hashedSenha, _ := bcrypt.GenerateFromPassword([]byte(req.NovaSenha), bcrypt.DefaultCost)
+	_, err := h.DB.Exec("UPDATE usuarios SET senha = $1 WHERE email = $2", string(hashedSenha), req.Email)
+	if err != nil {
+		http.Error(w, "Erro ao atualizar senha", http.StatusInternalServerError)
+		return
+	}
+
+	delete(codigosRecuperacao, req.Email)
+	w.WriteHeader(http.StatusOK)
+}
+
+// --- MIDDLEWARE E HELPERS ---
+
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// Extrai o token do Cookie (que o navegador manda automaticamente)
 		cookie, err := r.Cookie("auth_token")
 		if err != nil {
-			http.Error(w, "Acesso Negado: Cookie não encontrado", http.StatusUnauthorized)
+			http.Error(w, "Faça login para continuar", http.StatusUnauthorized)
 			return
 		}
 
-		// Valida a assinatura do Token
-		valido, err := validarTokenJWT(cookie.Value)
-		if err != nil || !valido {
-			http.Error(w, "Acesso Negado: Token inválido ou expirado", http.StatusUnauthorized)
+		claims, err := validarTokenJWT(cookie.Value)
+		if err != nil || claims == nil {
+			http.Error(w, "Sessão expirada", http.StatusUnauthorized)
 			return
 		}
 
-		// Tudo certo, libera o tráfego
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), CtxKeyUsuarioID, claims.UsuarioID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func UsuarioIDFromContext(ctx context.Context) (int, bool) {
+	id, ok := ctx.Value(CtxKeyUsuarioID).(int)
+	return id, ok
 }

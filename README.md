@@ -1,66 +1,115 @@
-# 💼 Boutique ERP & Financial Dashboard
+# 💼 Boutique ERP SaaS & Financial Dashboard
 
-Um sistema completo de Ponto de Venda (PDV), Gestão de Estoque e Inteligência de Negócios (BI) construído com **Go** e **PostgreSQL**. Desenhado para unir a potência de um terminal financeiro (wall-street style) com a elegância visual de uma marca de grife.
+Um sistema completo de Ponto de Venda (PDV), Gestão de Estoque, Inteligência de Negócios (BI) e **Catálogo Online** construído com **Go**, **PostgreSQL** e **Vanilla JS**.  
+Agora preparado como um **SaaS Multi-Tenant**, permitindo que vários feirantes/lojas rodem de forma isolada na mesma infraestrutura.
 
 ## 🚀 Visão Geral
 
-Este projeto foi desenvolvido com a mentalidade de um Diretor Financeiro (CFO). Ele não apenas registra vendas, mas exige disciplina operacional (Trava de Abertura/Fechamento de Caixa), calcula patrimônio imobilizado em tempo real e projeta o fluxo de caixa através de gráficos interativos.
-
-Além do painel administrativo, o sistema gera automaticamente um **Catálogo Online** (Estilo E-commerce) personalizável para que o lojista receba pedidos direto no WhatsApp.
+- Painel administrativo blindado (login + cookies HttpOnly + JWT) para operar caixa, estoque e relatórios.
+- Cada lojista (tabela `usuarios`) possui seus próprios **produtos**, **movimentações de caixa** e **configuração de catálogo**, isolados por `usuario_id`.
+- Geração automática de um **Catálogo Público** por lojista, consumido via `catalogo.html?usuario_id=123`, com pedidos chegando direto no WhatsApp.
 
 ## ✨ Principais Funcionalidades
 
-- **🔒 Trava Operacional de Caixa:** O sistema só opera após o registro do Fundo de Troco inicial, garantindo balanços perfeitos no fim do dia.
-- **📊 Business Intelligence (BI):** Dashboards interativos com Chart.js (Gráficos de linha de fluxo e barras comparativas de Receita vs Despesa).
-- **📦 Estoque Inteligente:** Filtro dinâmico por categorias, alertas automáticos de ruptura de estoque e cálculo do patrimônio imobilizado (Preço de Custo x Quantidade).
-- **📋 Logística e Checklist:** Sistema integrado de To-Do list para operações diárias (compras, contatos com fornecedores) salvo no *Local Storage*.
-- **📈 Exportação Contábil:** Geração de relatórios financeiros e extratos detalhados com exportação em um clique para planilhas `.csv`.
-- **🛍️ Catálogo Online (White-label):** Vitrine digital para clientes, onde o lojista pode alterar pelo painel a cor principal do tema, o nome e as redes sociais.
-- **📱 Integração WhatsApp:** Geração automática de recibos pós-venda enviados diretamente para o WhatsApp do cliente.
+- **🔒 Trava Operacional de Caixa:** exige registro de fundo de troco inicial antes de liberar o painel financeiro.
+- **📊 BI em tempo real:** dashboards com receita, despesas, ticket médio e gráficos em 7 dias.
+- **📦 Estoque Inteligente:** categorias, alertas de ruptura, patrimônio imobilizado e tela de reposição com custo médio automático.
+- **🧾 Livro Caixa & Relatórios:** extrato dos últimos 30 dias, exportação `.csv` e PDF executivo para diretoria/contador.
+- **🛍️ Catálogo Online (White-label):** página pública por lojista com tema, nome, Instagram e mensagem personalizados.
+- **📱 Integração WhatsApp:** recibos pós-venda e pedidos do catálogo enviados direto para o WhatsApp.
+- **🧑‍💼 Multi-Tenant Real:** todas as queries protegidas filtram por `usuario_id`; um lojista nunca acessa dados de outro.
+- **🖼️ Múltiplas Fotos por Produto:** campo `url_imagem` como `JSONB` (array de base64/URLs) com controle `visivel_catalogo`.
 
 ## 🛠️ Tecnologias Utilizadas
 
-**Backend:**
-- [Go (Golang)](https://golang.org/) - Alta performance, tipagem forte e concorrência.
-- [PostgreSQL](https://www.postgresql.org/) - Banco de dados relacional robusto e seguro.
-- Arquitetura RESTful com autenticação JWT.
+**Backend**
+- Go (Golang)
+- PostgreSQL
+- Gorilla Mux
+- JWT (cookies HttpOnly)
 
-**Frontend:**
-- HTML5 / Vanilla JS - Zero dependências pesadas (sem frameworks JS), focando em velocidade bruta.
-- [Tailwind CSS](https://tailwindcss.com/) - Estilização utility-first para um design elegante e responsivo (Desktop & Mobile).
-- [Chart.js](https://www.chartjs.org/) - Renderização de gráficos financeiros em tempo real.
-- [Phosphor Icons](https://phosphoricons.com/) - Iconografia limpa e moderna.
+**Frontend**
+- HTML5 + Vanilla JS
+- Tailwind CSS
+- Chart.js
+- Phosphor Icons
 
 ## ⚙️ Como Executar o Projeto
 
-### Pré-requisitos
-- Go 1.20+ instalado
-- PostgreSQL rodando localmente ou em nuvem
+### 1. Pré-requisitos
+- Go 1.20+
+- PostgreSQL rodando local (ex.: porta 5432)
 
-### Passo a Passo
+### 2. Clonar o repositório
 
-1. **Clone o repositório**
-   ```bash
-   git clone [https://github.com/theo-guerra/simple-shop.git](https://github.com/theo-guerra/simple-shop.git)
-   cd simple-shop
-Configure o Banco de Dados
-Crie um banco de dados no PostgreSQL (ex: simple_shop) e execute os scripts de criação de tabelas (produtos, caixa_movimentos, sessoes_caixa, loja_config, etc).
+```bash
+git clone https://github.com/theo-guerra/simple-shop.git
+cd simple-shop
+```
 
-Configure as Variáveis de Conexão
-No arquivo cmd/api/main.go, atualize a string de conexão com suas credenciais do banco:
+### 3. Configurar o banco de dados
 
-Go
-db, _ := database.Conectar("user=postgres password=SUA_SENHA dbname=simple_shop host=localhost sslmode=disable")
-Inicie o Servidor
+Crie o banco:
 
-Bash
+```bash
+createdb simple_shop
+```
+
+Depois, rode a migração mínima (ajuste usuário/senha conforme seu ambiente):
+
+```bash
+sudo -u postgres psql -d simple_shop -c "
+CREATE TABLE IF NOT EXISTS usuarios (
+  id    SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  senha VARCHAR(255) NOT NULL DEFAULT ''
+);
+
+INSERT INTO usuarios (id, email, senha)
+VALUES (1, 'mestre@loja.com', '')
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS usuario_id INTEGER NOT NULL DEFAULT 1 REFERENCES usuarios(id);
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS visivel_catalogo BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS url_imagem JSONB DEFAULT '[]'::jsonb;
+
+ALTER TABLE caixa_movimentos ADD COLUMN IF NOT EXISTS usuario_id INTEGER NOT NULL DEFAULT 1 REFERENCES usuarios(id);
+
+ALTER TABLE loja_config ADD COLUMN IF NOT EXISTS usuario_id INTEGER NOT NULL DEFAULT 1 REFERENCES usuarios(id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_loja_config_usuario_id ON loja_config(usuario_id);
+"
+```
+
+> Para uma migração mais completa (incluindo conversão de colunas antigas), veja `docs/MULTI-TENANT-MIGRATION.md`.
+
+### 4. Configurar a conexão com o banco
+
+No arquivo `cmd/api/main.go`, ajuste a string de conexão:
+
+```go
+db, err := database.Conectar("user=postgres password=SUA_SENHA dbname=simple_shop host=localhost sslmode=disable")
+```
+
+### 5. Subir o servidor
+
+```bash
 go run cmd/api/main.go
-Acesse a Aplicação
-Abra o navegador em http://localhost:8080/login.html
+```
 
-👨‍💻 Autor
-Theo Guerra
+A API sobe em `http://localhost:8080`.
 
-LinkedIn: TheoGuerra71
+### 6. Acessar o painel e o catálogo
 
+- Painel (login):  
+  `http://localhost:7000/login.html`
+
+- Após logar, você é redirecionado para o painel (`/`) e todas as operações passam a usar o `usuario_id` do token.
+
+- Catálogo público para o lojista `usuario_id = 1`:  
+  `http://localhost:7000/catalogo.html?usuario_id=1`
+
+## 👨‍💻 Autor
+
+Theo Guerra  
+LinkedIn: TheoGuerra71  
 GitHub: @theo-guerra

@@ -3,205 +3,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Catálogo Oficial</title>
+    <title>Catálogo Virtual</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400&family=Inter:wght@300;400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; }
+        .serif { font-family: 'Playfair Display', serif; }
         
-        :root { --tema-loja: #1c1917; } /* Cor dinâmica substituída pelo JS */
+        #carrinho-sidebar { transition: transform 0.3s ease-in-out; }
+        .carrinho-aberto { transform: translateX(0) !important; }
+        .carrinho-fechado { transform: translateX(100%); }
         
-        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; -webkit-tap-highlight-color: transparent; }
-        h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
-        
-        ::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .produto-img { object-fit: cover; width: 100%; height: 380px; background-color: #f5f5f4; border-radius: 1.5rem; }
-        
-        .btn-tema { background-color: var(--tema-loja); color: white; transition: transform 0.2s; }
-        .btn-tema:active { transform: scale(0.98); }
-        .text-tema { color: var(--tema-loja); }
-        .border-tema { border-color: var(--tema-loja); }
+        .tamanho-selecionado { background-color: #1c1917 !important; color: white !important; border-color: #1c1917 !important; }
     </style>
 </head>
-<body class="pb-28">
+<body class="min-h-screen pb-24">
 
-    <header class="py-8 px-6 text-center sticky top-0 z-40 bg-[#faf9f6]/95 backdrop-blur-md border-b border-stone-200">
-        <h1 id="store-name" class="text-3xl font-serif font-bold text-stone-900 tracking-tight mb-2">Sua Marca</h1>
-        <div class="flex items-center justify-center gap-4 text-stone-500">
-            <a id="link-insta" href="#" target="_blank" class="hidden flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest hover:text-stone-900 transition-colors">
-                <i class="ph-fill ph-instagram-logo text-lg"></i> <span id="txt-insta">Instagram</span>
-            </a>
+    <header class="bg-white border-b border-stone-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-900">
+                    <i class="ph-fill ph-storefront text-xl"></i>
+                </div>
+                <div>
+                    <h1 id="loja-nome" class="text-xl serif font-bold text-stone-900">Carregando...</h1>
+                    <p class="text-[10px] text-stone-400 uppercase tracking-widest font-bold">Catálogo Oficial</p>
+                </div>
+            </div>
+            
+            <button onclick="toggleCarrinho()" class="relative p-2 text-stone-900 hover:bg-stone-50 rounded-full transition-colors cursor-pointer">
+                <i class="ph-regular ph-shopping-bag text-3xl"></i>
+                <span id="badge-carrinho" class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full hidden">0</span>
+            </button>
         </div>
     </header>
 
-    <main class="max-w-md mx-auto w-full pt-6 px-5 relative z-10">
-        
-        <div class="flex gap-2 overflow-x-auto hide-scroll pb-6" id="filtro-categorias">
-            <p class="text-xs text-stone-400 animate-pulse">Carregando vitrine...</p>
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <div id="grid-produtos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <p class="col-span-full text-center text-stone-400 py-10">Buscando coleção no acervo...</p>
         </div>
-
-        <div id="grid-produtos" class="grid grid-cols-1 gap-10"></div>
     </main>
 
-    <div id="barra-carrinho" class="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-5 transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <div>
-                <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Sua Sacola</p>
-                <p class="text-xl font-serif text-stone-900"><span id="qtd-sacola">0</span> itens <span class="text-sm font-sans font-bold text-stone-500 ml-1">(R$ <span id="total-sacola">0,00</span>)</span></p>
-            </div>
-            <button onclick="enviarPedido()" class="btn-tema px-6 py-4 rounded-full font-bold shadow-lg flex items-center gap-2">
-                Pedir via Whats <i class="ph-fill ph-whatsapp-logo text-xl"></i>
+    <div id="carrinho-overlay" onclick="toggleCarrinho()" class="fixed inset-0 bg-black/40 z-50 hidden transition-opacity backdrop-blur-sm"></div>
+    
+    <div id="carrinho-sidebar" class="fixed top-0 right-0 h-full w-full md:w-[400px] bg-white z-50 shadow-2xl flex flex-col carrinho-fechado border-l border-stone-200">
+        
+        <div class="p-5 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+            <h2 class="text-lg serif font-bold flex items-center gap-2">
+                <i class="ph-fill ph-shopping-bag text-stone-400"></i> Sua Sacola
+            </h2>
+            <button onclick="toggleCarrinho()" class="p-2 text-stone-400 hover:text-stone-900 rounded-full bg-white border border-stone-200 shadow-sm cursor-pointer transition-colors">
+                <i class="ph-bold ph-x"></i>
             </button>
+        </div>
+
+        <div id="lista-carrinho" class="flex-1 overflow-y-auto p-5 space-y-4"></div>
+
+        <div class="p-6 border-t border-stone-100 bg-white">
+            <div class="flex justify-between items-center mb-4 text-sm font-bold text-stone-400 uppercase tracking-widest">
+                <span>Total Estimado</span>
+                <span id="carrinho-total" class="text-2xl font-black text-stone-900 normal-case tracking-normal">R$ 0,00</span>
+            </div>
+            
+            <button onclick="enviarPedidoWhatsApp()" id="btn-whatsapp" disabled class="w-full bg-[#25D366] text-white py-4 rounded-full font-bold shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="ph-fill ph-whatsapp text-2xl"></i> Enviar Pedido
+            </button>
+            <p class="text-[10px] text-center text-stone-400 mt-3 font-medium">O pagamento será combinado direto com a loja.</p>
         </div>
     </div>
 
-    <footer class="text-center py-12 px-6 text-stone-400">
-        <p class="serif italic text-lg mb-2" id="msg-suporte">Feito com carinho para você.</p>
-        <p class="text-[10px] uppercase tracking-widest font-bold">© <span id="ano-footer">2026</span></p>
-    </footer>
-
     <script>
-        let loja = {};
-        let produtos = [];
-        let carrinho = [];
+        let carrinho = []; 
+        let tamanhosEscolhidos = {}; 
+        let dadosLoja = { nome: "Boutique ERP", whatsapp: "" };
 
-        async function initLoja() {
-            document.getElementById('ano-footer').innerText = new Date().getFullYear();
+        const formatarMoeda = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            // 1. Busca configs (Público)
+        // 🚀 1. BUSCA OS DADOS REAIS DO BANCO DE DADOS
+        async function carregarCatalogo() {
+            // Pega o nome da loja digitado na URL (ex: "minhamonalisa")
+            const lojaUrl = window.location.pathname.replace('/', '');
+            
             try {
-                const resLoja = await fetch('/api/loja');
-                if(resLoja.ok) {
-                    loja = await resLoja.json();
-                    document.getElementById('store-name').innerText = loja.nome_loja || "Boutique";
-                    if(loja.msg_suporte) document.getElementById('msg-suporte').innerText = loja.msg_suporte;
-                    
-                    // Injeta a cor da loja no CSS
-                    if(loja.cor_hex) { document.documentElement.style.setProperty('--tema-loja', loja.cor_hex); }
-
-                    if(loja.instagram) {
-                        const btnInsta = document.getElementById('link-insta');
-                        btnInsta.classList.remove('hidden');
-                        btnInsta.href = `https://instagram.com/${loja.instagram.replace('@','')}`;
-                        document.getElementById('txt-insta').innerText = loja.instagram;
-                    }
+                // Tenta buscar a configuração da loja (Nome e WhatsApp)
+                const resLoja = await fetch(`/api/loja?url=${lojaUrl}`);
+                if (resLoja.ok) {
+                    const config = await resLoja.json();
+                    dadosLoja.nome = config.nome_loja || "Nossa Loja";
+                    dadosLoja.whatsapp = config.whatsapp || "";
+                    document.getElementById('loja-nome').innerText = dadosLoja.nome;
                 }
-            } catch(e) { console.error("Erro ao carregar loja", e); }
 
-            // 2. Busca Produtos (Público)
-            try {
-                const resProd = await fetch('/api/produtos');
-                if(resProd.ok) {
-                    const todos = await resProd.json();
-                    // O SEGREDO: Filtra apenas produtos com estoque > 0
-                    produtos = todos.filter(p => p.quantidade > 0);
-                    renderizarCategorias();
-                    renderizarProdutos('Todos');
+                // Tenta buscar os produtos reais do acervo dessa loja
+                const resProd = await fetch(`/api/produtos/vitrine?url=${lojaUrl}`);
+                if (resProd.ok) {
+                    const produtos = await resProd.json();
+                    renderizarProdutos(produtos);
                 } else {
-                    document.getElementById('filtro-categorias').innerHTML = "<p class='text-sm text-red-500'>Erro ao carregar produtos.</p>";
+                    document.getElementById('grid-produtos').innerHTML = '<p class="col-span-full text-center text-stone-500">Nenhum produto encontrado nesta vitrine.</p>';
                 }
-            } catch(e) { console.error("Erro", e); }
+            } catch (err) {
+                document.getElementById('grid-produtos').innerHTML = '<p class="col-span-full text-center text-red-500 font-bold">Erro ao conectar com o banco de dados.</p>';
+            }
         }
 
-        function renderizarCategorias() {
-            const catContainer = document.getElementById('filtro-categorias');
-            const categorias = ['Todos', ...new Set(produtos.map(p => p.categoria || 'Geral'))];
-            
-            catContainer.innerHTML = '';
-            categorias.forEach(cat => {
-                catContainer.innerHTML += `
-                <button onclick="renderizarProdutos('${cat}')" class="flex-shrink-0 px-6 py-2.5 rounded-full border border-stone-300 text-[10px] uppercase tracking-widest font-bold text-stone-500 transition-colors focus:bg-stone-900 focus:text-white focus:border-stone-900 active:scale-95">
-                    ${cat}
-                </button>`;
-            });
-        }
-
-        function renderizarProdutos(filtroCat) {
+        // 🎨 2. DESENHA OS PRODUTOS REAIS NA TELA
+        function renderizarProdutos(produtos) {
             const grid = document.getElementById('grid-produtos');
-            grid.innerHTML = '';
-            
-            const exibicao = filtroCat === 'Todos' ? produtos : produtos.filter(p => (p.categoria || 'Geral') === filtroCat);
+            grid.innerHTML = ''; 
 
-            if(exibicao.length === 0) {
-                grid.innerHTML = `<div class="text-center py-10"><i class="ph ph-package text-5xl text-stone-300 mb-2"></i><p class="text-sm text-stone-500 font-medium">Nenhum item nesta coleção.</p></div>`;
+            if (!produtos || produtos.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center text-stone-500 py-10">O acervo está vazio ou os produtos estão ocultos.</p>';
                 return;
             }
 
-            exibicao.forEach(p => {
-                // Se o lojista subiu imagem, usa a base64. Se não, exibe placeholder elegante.
-                let htmlImg = `<div class="w-full h-[350px] bg-stone-100 rounded-3xl mb-4 flex flex-col items-center justify-center text-stone-300"><i class="ph ph-image text-5xl mb-2"></i><span class="text-xs font-bold uppercase tracking-widest">Sem Foto</span></div>`;
-                if(p.url_imagem && p.url_imagem.length > 10) {
-                    htmlImg = `<img src="${p.url_imagem}" class="produto-img shadow-sm mb-4">`;
-                }
-
+            produtos.forEach(p => {
+                // Pega a primeira imagem do array, ou usa uma placeholder
+                const imagemUrl = (p.url_imagem && p.url_imagem.length > 0) ? p.url_imagem[0] : 'https://placehold.co/400x500/f5f5f4/a8a29e?text=Sem+Foto';
+                
                 grid.innerHTML += `
-                <div class="group">
-                    <div class="relative">
-                        ${htmlImg}
-                        <button onclick="addCarrinho(${p.id}, '${p.nome}', ${p.preco}, event)" class="absolute bottom-8 right-4 btn-tema w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform z-10">
-                            <i class="ph-fill ph-bag text-2xl"></i>
+                    <div class="bg-white rounded-[2rem] p-4 shadow-sm border border-stone-100 flex flex-col h-full hover:shadow-lg transition-shadow">
+                        <div class="h-72 w-full rounded-[1.5rem] bg-stone-50 mb-4 overflow-hidden relative">
+                            <img src="${imagemUrl}" alt="${p.nome}" class="w-full h-full object-cover">
+                            <span class="absolute top-3 left-3 bg-white/90 text-stone-900 text-[10px] px-3 py-1 font-bold tracking-widest uppercase rounded-full shadow-sm">${p.categoria}</span>
+                        </div>
+                        <h3 class="font-bold text-stone-900 text-lg leading-tight mb-1">${p.nome}</h3>
+                        <span class="font-black text-xl text-stone-900 mb-4">${formatarMoeda(p.preco_venda)}</span>
+                        
+                        <div class="mb-5">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Tamanho:</p>
+                            <div class="flex gap-2">
+                                ${['P', 'M', 'G', 'GG'].map(tam => `
+                                    <button onclick="escolherTamanho(${p.id}, '${tam}', this)" class="btn-tam-${p.id} flex-1 py-2 rounded-xl border border-stone-200 text-xs font-bold text-stone-600 hover:border-stone-900 transition-colors bg-white">
+                                        ${tam}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <p id="erro-tam-${p.id}" class="text-xs text-red-500 font-bold mt-2 hidden bg-red-50 px-2 py-1 rounded-md border border-red-100">Escolha um tamanho.</p>
+                        </div>
+
+                        <button onclick="adicionarProduto(${p.id}, '${p.nome}', ${p.preco_venda}, '${imagemUrl}')" class="w-full bg-stone-900 text-white py-4 rounded-xl font-bold mt-auto hover:bg-stone-800 transition-colors flex justify-center items-center gap-2 shadow-md">
+                            <i class="ph-bold ph-shopping-bag"></i> Adicionar
                         </button>
                     </div>
-                    <div class="flex justify-between items-start px-2">
-                        <div>
-                            <p class="text-[10px] text-stone-400 font-bold uppercase tracking-widest mb-1">${p.categoria || 'Geral'}</p>
-                            <h3 class="font-serif text-2xl text-stone-900 leading-tight">${p.nome}</h3>
-                        </div>
-                        <p class="font-sans font-bold text-stone-900 mt-1">R$ ${p.preco.toFixed(2)}</p>
-                    </div>
-                </div>`;
+                `;
             });
+            atualizarCarrinhoUI();
         }
 
-        function addCarrinho(id, nome, preco, event) {
-            const item = carrinho.find(i => i.id === id);
-            if(item) { item.qtd++; } else { carrinho.push({ id, nome, preco, qtd: 1 }); }
-            atualizarBarra();
-            
-            // Animação de sucesso no botão
-            const btn = event.currentTarget;
-            const iconOriginal = btn.innerHTML;
-            btn.innerHTML = '<i class="ph-bold ph-check text-2xl"></i>';
-            btn.classList.add('bg-stone-900');
-            setTimeout(() => { btn.innerHTML = iconOriginal; btn.classList.remove('bg-stone-900'); }, 800);
+        // ==========================================
+        // LÓGICA DO CARRINHO MANTIDA INTACTA
+        // ==========================================
+        function escolherTamanho(produtoId, tamanho, botaoClicado) {
+            tamanhosEscolhidos[produtoId] = tamanho;
+            document.querySelectorAll(`.btn-tam-${produtoId}`).forEach(btn => btn.classList.remove('tamanho-selecionado'));
+            botaoClicado.classList.add('tamanho-selecionado');
+            document.getElementById(`erro-tam-${produtoId}`).classList.add('hidden');
         }
 
-        function atualizarBarra() {
-            const barra = document.getElementById('barra-carrinho');
-            if(carrinho.length === 0) {
-                barra.classList.add('translate-y-full');
+        function adicionarProduto(id, nome, preco, img) {
+            const tamanho = tamanhosEscolhidos[id];
+            if (!tamanho) {
+                document.getElementById(`erro-tam-${id}`).classList.remove('hidden');
                 return;
             }
+
+            const idCarrinho = `${id}-${tamanho}`;
+            const itemExistente = carrinho.find(item => item.idCarrinho === idCarrinho);
             
-            barra.classList.remove('translate-y-full');
+            if (itemExistente) {
+                itemExistente.quantidade += 1;
+            } else {
+                carrinho.push({ idCarrinho, nome, preco, img, tamanho, quantidade: 1 });
+            }
+
+            if (document.getElementById('carrinho-sidebar').classList.contains('carrinho-fechado')) toggleCarrinho(); 
+            atualizarCarrinhoUI();
             
-            let totalQtd = 0; let totalValor = 0;
-            carrinho.forEach(i => { totalQtd += i.qtd; totalValor += (i.preco * i.qtd); });
-            
-            document.getElementById('qtd-sacola').innerText = totalQtd;
-            document.getElementById('total-sacola').innerText = totalValor.toFixed(2);
+            tamanhosEscolhidos[id] = null;
+            document.querySelectorAll(`.btn-tam-${id}`).forEach(btn => btn.classList.remove('tamanho-selecionado'));
         }
 
-        function enviarPedido() {
-            if(!loja.whatsapp) return alert("Esta loja ainda não habilitou vendas pelo WhatsApp.");
+        function alterarQuantidade(idCarrinho, delta) {
+            const item = carrinho.find(i => i.idCarrinho === idCarrinho);
+            if (!item) return;
+            item.quantidade += delta;
+            if (item.quantidade <= 0) carrinho = carrinho.filter(i => i.idCarrinho !== idCarrinho);
+            atualizarCarrinhoUI();
+        }
+
+        function atualizarCarrinhoUI() {
+            const lista = document.getElementById('lista-carrinho');
+            const btnWhatsapp = document.getElementById('btn-whatsapp');
+            const badge = document.getElementById('badge-carrinho');
             
-            let texto = `Olá! Gostaria de fazer o seguinte pedido na vitrine online:\n\n`;
-            let total = 0;
-            
-            carrinho.forEach(i => {
-                texto += `🛍️ ${i.qtd}x ${i.nome} - R$ ${(i.preco * i.qtd).toFixed(2)}\n`;
-                total += (i.preco * i.qtd);
+            let total = 0; let totalItens = 0;
+
+            if (carrinho.length === 0) {
+                lista.innerHTML = `<div class="text-center text-stone-400 py-20"><i class="ph-thin ph-shopping-bag text-6xl mb-2"></i><p>Sua sacola está vazia.</p></div>`;
+                document.getElementById('carrinho-total').innerText = "R$ 0,00";
+                btnWhatsapp.disabled = true; badge.classList.add('hidden');
+                return;
+            }
+
+            lista.innerHTML = '';
+            carrinho.forEach(item => {
+                const subtotal = item.preco * item.quantidade;
+                total += subtotal; totalItens += item.quantidade;
+
+                lista.innerHTML += `
+                    <div class="flex gap-3 bg-white p-3 border border-stone-100 rounded-[1.5rem] shadow-sm items-center">
+                        <img src="${item.img}" class="w-16 h-20 rounded-xl object-cover bg-stone-50">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-bold text-stone-900 leading-tight">${item.nome}</h4>
+                            <span class="text-[10px] font-bold bg-stone-100 text-stone-600 px-2 py-1 rounded-md inline-block mt-1">Tam: ${item.tamanho}</span>
+                            <p class="text-xs font-bold text-stone-500 mt-1">${formatarMoeda(item.preco)}</p>
+                        </div>
+                        <div class="flex flex-col items-center bg-stone-50 rounded-full border border-stone-200">
+                            <button onclick="alterarQuantidade('${item.idCarrinho}', 1)" class="w-8 h-8 flex items-center justify-center text-stone-500 hover:text-stone-900"><i class="ph-bold ph-plus"></i></button>
+                            <span class="text-xs font-black text-stone-900 py-1">${item.quantidade}</span>
+                            <button onclick="alterarQuantidade('${item.idCarrinho}', -1)" class="w-8 h-8 flex items-center justify-center text-stone-500 hover:text-stone-900"><i class="ph-bold ph-minus"></i></button>
+                        </div>
+                    </div>
+                `;
             });
-            
-            texto += `\n💰 *Total da Sacola: R$ ${total.toFixed(2)}*\n\nComo faço o pagamento?`;
-            
-            const numZap = loja.whatsapp.replace(/\D/g, '');
-            window.open(`https://wa.me/55${numZap}?text=${encodeURIComponent(texto)}`, '_blank');
+
+            document.getElementById('carrinho-total').innerText = formatarMoeda(total);
+            badge.innerText = totalItens; badge.classList.remove('hidden'); btnWhatsapp.disabled = false;
         }
 
-        initLoja();
+        function enviarPedidoWhatsApp() {
+            if (carrinho.length === 0 || !dadosLoja.whatsapp) {
+                alert(dadosLoja.whatsapp ? "Sua sacola está vazia!" : "O lojista ainda não configurou o WhatsApp.");
+                return;
+            }
+            let texto = `🛍️ *NOVO PEDIDO - ${dadosLoja.nome}*\n\n`;
+            let total = 0;
+            carrinho.forEach(item => {
+                const subtotal = item.preco * item.quantidade; total += subtotal;
+                texto += `▪️ ${item.quantidade}x ${item.nome} *(Tam: ${item.tamanho})* - ${formatarMoeda(subtotal)}\n`;
+            });
+            texto += `\n💰 *Total do Pedido: ${formatarMoeda(total)}*\n\n_Olá! Confirme por favor a disponibilidade dessas peças._`;
+            
+            const numeroLimpo = dadosLoja.whatsapp.replace(/\D/g, '');
+            window.open(`https://wa.me/${numeroLimpo}?text=${encodeURIComponent(texto)}`, '_blank');
+        }
+
+        function toggleCarrinho() {
+            const sidebar = document.getElementById('carrinho-sidebar');
+            document.getElementById('carrinho-overlay').classList.toggle('hidden');
+            sidebar.classList.toggle('carrinho-fechado'); sidebar.classList.toggle('carrinho-aberto');
+        }
+
+        window.onload = carregarCatalogo;
     </script>
 </body>
 </html>

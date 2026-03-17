@@ -3,165 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Boutique ERP</title>
-    
+    <title>Boutique ERP - Acesso Seguro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <script>
-        tailwind.config = { 
-            theme: { 
-                extend: { 
-                    fontFamily: { 
-                        sans: ['Inter', 'sans-serif'], 
-                        serif: ['Playfair Display', 'serif'] 
-                    }, 
-                    colors: { 
-                        brand: { 500: '#1c1917', 600: '#0c0a09' } 
-                    },
-                    animation: {
-                        'fade-in': 'fadeIn 0.8s ease-out'
-                    },
-                    keyframes: {
-                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
-                    }
-                } 
-            } 
-        }
-    </script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,800;1,600&family=Inter:wght@400;600;800&display=swap');
-        body { -webkit-tap-highlight-color: transparent; background-color: #faf9f6; color: #1c1917; }
-        
-        /* Loading Spinner Animado */
-        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1c1917; }
+        .serif { font-family: 'Playfair Display', serif; }
+        .aba-btn.ativa { border-bottom-color: #1c1917; color: #1c1917; }
+        .aba-btn { border-bottom-color: transparent; color: #a8a29e; transition: all 0.3s; }
+        .form-view { display: none; animation: fadeIn 0.4s ease; }
+        .form-view.ativa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .btn-primary { background-color: #1c1917; color: white; transition: transform 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
     </style>
 </head>
-<body class="h-screen w-full flex overflow-hidden">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full lg:w-1/2 h-full flex flex-col justify-center px-8 sm:px-16 md:px-24 relative bg-[#faf9f6] z-10 animate-fade-in">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-stone-200">
         
-        <div class="mb-10">
-            <div class="w-14 h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-                <i class="ph-fill ph-storefront text-3xl"></i>
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-900">
+                <i class="ph-fill ph-shield-check text-3xl"></i>
             </div>
-            <h1 class="font-serif text-4xl text-stone-900 mb-2 tracking-tight">Acesso Restrito</h1>
-            <p class="text-stone-500 text-sm font-medium">Insira suas credenciais para gerenciar a operação.</p>
+            <h1 class="text-3xl serif tracking-tight text-stone-900">Boutique ERP</h1>
+            <p class="text-[10px] text-stone-400 uppercase tracking-widest font-bold mt-2">Acesso Restrito ao Lojista</p>
         </div>
 
-        <form id="form-login" onsubmit="realizarLogin(event)" class="space-y-6">
-            <div>
-                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">E-mail corporativo</label>
-                <div class="relative">
-                    <i class="ph-fill ph-envelope-simple absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-xl"></i>
-                    <input type="email" id="email" required placeholder="admin@boutique.com" class="w-full pl-12 pr-4 py-4 bg-white border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-100 transition-all">
-                </div>
-            </div>
-            
-            <div>
-                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Senha de segurança</label>
-                <div class="relative">
-                    <i class="ph-fill ph-lock-key absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-xl"></i>
-                    <input type="password" id="senha" required placeholder="••••••••" class="w-full pl-12 pr-12 py-4 bg-white border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-900 focus:ring-4 focus:ring-stone-100 transition-all">
-                    <button type="button" onclick="toggleSenha()" class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 transition-colors">
-                        <i class="ph ph-eye text-xl" id="icone-olho"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div id="msg-erro" class="hidden bg-red-50 text-red-600 p-4 rounded-xl text-sm font-bold border border-red-100 flex items-center gap-3">
-                <i class="ph-fill ph-warning-circle text-xl"></i>
-                <span id="texto-erro">E-mail ou senha incorretos.</span>
-            </div>
+        <div id="container-abas" class="flex mb-8 border-b border-stone-100 transition-all duration-300">
+            <button onclick="mudarAba('login')" id="btn-login" class="aba-btn ativa flex-1 pb-4 text-sm font-bold uppercase tracking-widest border-b-2">Entrar</button>
+            <button onclick="mudarAba('cadastro')" id="btn-cadastro" class="aba-btn flex-1 pb-4 text-sm font-bold uppercase tracking-widest border-b-2 hover:text-stone-700">Criar Conta</button>
+        </div>
 
-            <button type="submit" id="btn-submit" class="w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-xl shadow-stone-900/20 hover:bg-stone-800 transition-all active:scale-95 flex justify-center items-center gap-2 mt-4">
-                <span id="btn-texto">Entrar no Terminal</span>
-                <i class="ph-bold ph-arrow-right" id="btn-icone"></i>
-                <div id="btn-spinner" class="spinner hidden"></div>
+        <form id="form-login" class="form-view ativa space-y-5" onsubmit="fazerLogin(event)">
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">E-mail</label>
+                <input type="email" id="email-login" required class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="seu@email.com">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">Senha</label>
+                <input type="password" id="senha-login" required class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="••••••••">
+                <button type="button" onclick="mudarAba('recuperar')" class="w-full text-right mt-2 text-[10px] font-bold text-stone-400 uppercase tracking-widest hover:text-stone-900 transition-colors">Esqueci minha senha</button>
+            </div>
+            <p id="erro-login" class="text-xs text-red-500 font-bold hidden text-center"></p>
+            <button type="submit" class="w-full btn-primary py-4 rounded-full font-bold shadow-lg mt-4 flex items-center justify-center gap-2">
+                Entrar no Painel <i class="ph-bold ph-arrow-right"></i>
             </button>
         </form>
 
-        <div class="absolute bottom-8 left-8 right-8 text-center lg:text-left">
-            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center justify-center lg:justify-start gap-1">
-                <i class="ph-fill ph-shield-check text-emerald-500 text-sm"></i> Conexão Criptografada via Cookies
-            </p>
-        </div>
-    </div>
+        <form id="form-cadastro" class="form-view space-y-5" onsubmit="fazerCadastro(event)">
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">E-mail para Cadastro</label>
+                <input type="email" id="email-cadastro" required class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="sualoja@email.com">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">Senha Segura (Mín. 6 dígitos)</label>
+                <input type="password" id="senha-cadastro" required minlength="6" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="Mínimo 6 caracteres">
+            </div>
+            <p id="erro-cadastro" class="text-xs text-red-500 font-bold hidden text-center"></p>
+            <p id="sucesso-cadastro" class="text-xs text-emerald-600 font-bold hidden text-center">Conta criada com sucesso!</p>
+            <button type="submit" class="w-full bg-stone-100 text-stone-900 border border-stone-200 py-4 rounded-full font-bold hover:bg-stone-200 transition-colors mt-4">
+                Finalizar Cadastro
+            </button>
+        </form>
 
-    <div class="hidden lg:block lg:w-1/2 relative bg-stone-200">
-        <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1600&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover object-center">
-        <div class="absolute inset-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent"></div>
-        <div class="absolute inset-0 flex flex-col justify-end p-16 text-white pb-24">
-            <h2 class="font-serif text-5xl mb-6 leading-tight">Gestão inteligente<br>para negócios reais.</h2>
-            <p class="text-stone-300 text-lg max-w-md font-light">Controle seu estoque, analise o fluxo de caixa e tome decisões baseadas em dados.</p>
-        </div>
+        <form id="form-recuperar" class="form-view space-y-5" onsubmit="fazerRecuperacao(event)">
+            <div class="text-center mb-6">
+                <h2 class="text-xl serif text-stone-900 mb-1">Recuperar Senha</h2>
+                <p class="text-xs text-stone-500" id="txt-recuperar-desc">Validaremos sua identidade com um código.</p>
+            </div>
+            
+            <div id="etapa-1" class="transition-opacity duration-300">
+                <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">Seu E-mail Cadastrado</label>
+                <input type="email" id="email-recuperar" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="seu@email.com">
+            </div>
+
+            <div id="etapa-2" class="hidden space-y-5 transition-opacity duration-300">
+                <div>
+                    <label class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 block ml-1">Código Recebido (Terminal)</label>
+                    <input type="text" id="codigo-recuperar" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-bold tracking-widest text-center text-lg outline-none focus:border-stone-400 transition-colors" placeholder="000000" maxlength="6">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block ml-1">Nova Senha de Acesso</label>
+                    <input type="password" id="senha-recuperar" minlength="6" class="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl font-medium outline-none focus:border-stone-400 transition-colors" placeholder="Mínimo 6 caracteres">
+                </div>
+            </div>
+
+            <p id="erro-recuperar" class="text-xs text-red-500 font-bold hidden text-center"></p>
+            <p id="sucesso-recuperar" class="text-xs text-emerald-600 font-bold hidden text-center">Senha atualizada com sucesso!</p>
+            
+            <div class="pt-4 space-y-3">
+                <button type="submit" id="btn-recuperar-acao" class="w-full bg-stone-900 text-white py-4 rounded-full font-bold shadow-lg hover:bg-stone-800 transition-colors">
+                    Enviar Código
+                </button>
+                <button type="button" onclick="cancelarRecuperacao()" class="w-full bg-transparent text-stone-400 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest hover:text-stone-900 transition-colors">
+                    Cancelar e Voltar
+                </button>
+            </div>
+        </form>
+
     </div>
 
     <script>
-        function toggleSenha() {
-            const input = document.getElementById('senha');
-            const icone = document.getElementById('icone-olho');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icone.classList.replace('ph-eye', 'ph-eye-slash');
+        // Variável de controle do estado da tela de recuperação
+        let passoRecuperacao = 1; 
+
+        // Alterna a visibilidade das telas (Login, Cadastro, Recuperar)
+        function mudarAba(aba) {
+            // Limpa as mensagens de erro
+            document.querySelectorAll('p[id^="erro-"], p[id^="sucesso-"]').forEach(el => el.classList.add('hidden'));
+            
+            // Oculta todas as abas e formulários
+            document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
+            document.querySelectorAll('.form-view').forEach(f => f.classList.remove('ativa'));
+            
+            // Se for login ou cadastro, mostra os botões de aba no topo
+            if (aba === 'login' || aba === 'cadastro') {
+                document.getElementById('container-abas').classList.remove('hidden');
+                document.getElementById(`btn-${aba}`).classList.add('ativa');
             } else {
-                input.type = 'password';
-                icone.classList.replace('ph-eye-slash', 'ph-eye');
+                // Se for recuperar senha, esconde os botões de aba para limpar a tela
+                document.getElementById('container-abas').classList.add('hidden');
             }
+            
+            // Exibe o formulário correto
+            document.getElementById(`form-${aba}`).classList.add('ativa');
         }
 
-        async function realizarLogin(event) {
-            event.preventDefault(); 
-            
-            const email = document.getElementById('email').value;
-            const senha = document.getElementById('senha').value;
-            
-            const btnSubmit = document.getElementById('btn-submit');
-            const btnTexto = document.getElementById('btn-texto');
-            const btnIcone = document.getElementById('btn-icone');
-            const btnSpinner = document.getElementById('btn-spinner');
-            const msgErro = document.getElementById('msg-erro');
+        // Reseta o fluxo de recuperação se o usuário clicar em "Cancelar"
+        function cancelarRecuperacao() {
+            passoRecuperacao = 1;
+            document.getElementById('etapa-1').classList.remove('hidden');
+            document.getElementById('etapa-2').classList.add('hidden');
+            document.getElementById('btn-recuperar-acao').innerText = "Enviar Código";
+            document.getElementById('txt-recuperar-desc').innerText = "Validaremos sua identidade com um código.";
+            document.getElementById('form-recuperar').reset();
+            mudarAba('login');
+        }
 
-            msgErro.classList.add('hidden');
-            btnSubmit.disabled = true;
-            btnSubmit.classList.add('opacity-80', 'cursor-wait');
-            btnTexto.innerText = "Autenticando...";
-            btnIcone.classList.add('hidden');
-            btnSpinner.classList.remove('hidden');
+        // --- FUNÇÃO DE LOGIN ---
+        async function fazerLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.innerHTML = "Autenticando..."; btn.disabled = true;
+            
+            const dados = { 
+                email: document.getElementById('email-login').value, 
+                senha: document.getElementById('senha-login').value 
+            };
 
             try {
-                const response = await fetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, senha: senha })
+                const res = await fetch('/auth/login', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(dados) 
+                });
+                
+                if (res.ok) { 
+                    window.location.href = '/index.html'; 
+                } else {
+                    document.getElementById('erro-login').innerText = "Credenciais inválidas.";
+                    document.getElementById('erro-login').classList.remove('hidden');
+                }
+            } catch (err) { alert("Erro de conexão com o servidor."); }
+            btn.innerHTML = 'Entrar no Painel <i class="ph-bold ph-arrow-right"></i>'; btn.disabled = false;
+        }
+
+        // --- FUNÇÃO DE CADASTRO ---
+        async function fazerCadastro(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.innerText = "Processando..."; btn.disabled = true;
+
+            const dados = { 
+                email: document.getElementById('email-cadastro').value, 
+                senha: document.getElementById('senha-cadastro').value 
+            };
+
+            try {
+                const res = await fetch('/auth/cadastro', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(dados) 
                 });
 
-                if (response.ok) {
-                    // SUCESSO! O Go enviou o cookie HttpOnly. 
-                    // Não tocamos em localStorage aqui.
-                    
-                    btnSpinner.classList.add('hidden');
-                    btnTexto.innerText = "Acesso Permitido";
-                    btnSubmit.classList.replace('bg-stone-900', 'bg-emerald-600');
-                    
-                    setTimeout(() => { window.location.href = '/'; }, 500);
+                if (res.ok) {
+                    document.getElementById('form-cadastro').reset();
+                    document.getElementById('sucesso-cadastro').classList.remove('hidden');
+                    setTimeout(() => mudarAba('login'), 2000);
                 } else {
-                    throw new Error("Credenciais inválidas");
+                    const txt = await res.text();
+                    document.getElementById('erro-cadastro').innerText = txt;
+                    document.getElementById('erro-cadastro').classList.remove('hidden');
                 }
-            } catch (error) {
-                msgErro.classList.remove('hidden');
-                const form = document.getElementById('form-login');
-                form.classList.add('translate-x-2');
-                setTimeout(() => form.classList.replace('translate-x-2', '-translate-x-2'), 100);
-                setTimeout(() => form.classList.replace('-translate-x-2', 'translate-x-0'), 200);
+            } catch (err) { alert("Erro de conexão."); }
+            btn.innerText = "Finalizar Cadastro"; btn.disabled = false;
+        }
 
-                btnSubmit.disabled = false;
-                btnSubmit.classList.remove('opacity-80', 'cursor-wait');
-                btnTexto.innerText = "Entrar no Terminal";
-                btnIcone.classList.remove('hidden');
-                btnSpinner.classList.add('hidden');
+        // --- FUNÇÃO DE RECUPERAÇÃO (A LÓGICA DE 2 PASSOS) ---
+        async function fazerRecuperacao(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-recuperar-acao');
+            const erroEl = document.getElementById('erro-recuperar');
+            const email = document.getElementById('email-recuperar').value;
+            
+            erroEl.classList.add('hidden'); // Limpa o erro antes de tentar
+
+            // === PASSO 1: Dispara o código para o Go ===
+            if (passoRecuperacao === 1) {
+                console.log("Solicitando código para:", email);
+                btn.innerText = "Verificando e-mail..."; btn.disabled = true;
+                
+                try {
+                    const res = await fetch('/auth/recuperar/solicitar', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ email: email }) 
+                    });
+
+                    if (res.ok) {
+                        // Sucesso! Muda a variável para o Passo 2
+                        passoRecuperacao = 2;
+                        
+                        // Esconde o campo do e-mail e mostra os novos campos
+                        document.getElementById('etapa-1').classList.add('hidden');
+                        document.getElementById('etapa-2').classList.remove('hidden');
+                        
+                        // Atualiza os textos da tela
+                        document.getElementById('txt-recuperar-desc').innerText = "Código enviado! Verifique o console do servidor.";
+                        btn.innerText = "Confirmar Nova Senha";
+                        
+                        // Torna os novos campos obrigatórios para o navegador avisar o usuário
+                        document.getElementById('codigo-recuperar').required = true;
+                        document.getElementById('senha-recuperar').required = true;
+                    } else {
+                        const msg = await res.text();
+                        erroEl.innerText = msg || "E-mail não encontrado no banco de dados.";
+                        erroEl.classList.remove('hidden');
+                    }
+                } catch (err) { 
+                    console.error("Erro no fetch:", err);
+                    erroEl.innerText = "Erro ao conectar com o servidor."; 
+                    erroEl.classList.remove('hidden'); 
+                }
+                
+                btn.disabled = false;
+                return; // Para a execução aqui se for o Passo 1
+            }
+
+            // === PASSO 2: Envia o código digitado e a senha nova para o Go ===
+            if (passoRecuperacao === 2) {
+                console.log("Validando código...");
+                btn.innerText = "Atualizando senha..."; btn.disabled = true;
+                
+                const dadosValidacao = {
+                    email: email, // Pega o email lá do primeiro campo (que está invisível agora)
+                    codigo: document.getElementById('codigo-recuperar').value,
+                    nova_senha: document.getElementById('senha-recuperar').value
+                };
+
+                try {
+                    const res = await fetch('/auth/recuperar/validar', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(dadosValidacao) 
+                    });
+
+                    if (res.ok) {
+                        // Tudo certo, senha trocada!
+                        document.getElementById('sucesso-recuperar').classList.remove('hidden');
+                        // Redireciona o lojista de volta pro login após 2,5 segundos
+                        setTimeout(() => window.location.reload(), 2500);
+                    } else {
+                        const msg = await res.text();
+                        erroEl.innerText = msg || "Código de verificação incorreto.";
+                        erroEl.classList.remove('hidden');
+                        btn.innerText = "Confirmar Nova Senha";
+                    }
+                } catch (err) { 
+                    erroEl.innerText = "Erro ao conectar com o servidor."; 
+                    erroEl.classList.remove('hidden'); 
+                    btn.innerText = "Confirmar Nova Senha";
+                }
+                
+                btn.disabled = false;
             }
         }
     </script>

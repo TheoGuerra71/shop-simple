@@ -1,41 +1,15 @@
 package models
 
-// --- SEGURANÇA ---
+// 👤 USUÁRIO: O dono da loja (Lojista)
 type Usuario struct {
+	ID    int    `json:"id"`
 	Email string `json:"email"`
 	Senha string `json:"senha"`
 }
 
-// --- PRODUTOS E ESTOQUE ---
-type ProdutoApp struct {
-	ID            int     `json:"id"`
-	Nome          string  `json:"nome"`
-	Categoria     string  `json:"categoria"`
-	PrecoVenda    float64 `json:"preco"`
-	Custo         float64 `json:"custo"`
-	Quantidade    int     `json:"quantidade"`
-	EstoqueMinimo int     `json:"estoque_minimo"`
-	UrlImagem     string  `json:"url_imagem"`
-}
-
-// --- FINANCEIRO E CAIXA ---
-type Movimentacao struct {
-	ID        int     `json:"id"`
-	Tipo      string  `json:"tipo"`
-	Descricao string  `json:"descricao"`
-	Valor     float64 `json:"valor"`
-	DataMov   string  `json:"data_mov"`
-}
-
-type SessaoCaixa struct {
-	ID              int     `json:"id"`
-	Status          string  `json:"status"`
-	FundoTroco      float64 `json:"fundo_troco"`
-	TotalFechamento float64 `json:"total_fechamento"`
-}
-
-// --- CONFIGURAÇÕES DA LOJA (CATÁLOGO FARM) ---
+// ⚙️ CONFIGURAÇÃO DA LOJA: Identidade visual e contato do catálogo
 type LojaConfig struct {
+	UsuarioID  int    `json:"usuario_id"`
 	NomeLoja   string `json:"nome_loja"`
 	Whatsapp   string `json:"whatsapp"`
 	Instagram  string `json:"instagram"`
@@ -43,31 +17,57 @@ type LojaConfig struct {
 	MsgSuporte string `json:"msg_suporte"`
 }
 
-// --- LOGÍSTICA ---
-type ChecklistItem struct {
-	ID        int    `json:"id"`
-	Tarefa    string `json:"tarefa"`
-	Concluido bool   `json:"concluido"`
+// 📦 PRODUTO: O item físico que vai para a vitrine
+type ProdutoApp struct {
+	ID              int      `json:"id"`
+	UsuarioID       int      `json:"usuario_id"`
+	Nome            string   `json:"nome"`
+	Categoria       string   `json:"categoria"`
+	Preco           float64  `json:"preco"` 
+	PrecoVenda      float64  `json:"preco_venda"`
+	Custo           float64  `json:"custo"`
+	Quantidade      int      `json:"quantidade"`
+	EstoqueMinimo   int      `json:"estoque_minimo"`
+	UrlImagem       []string `json:"url_imagem"`
+	VisivelCatalogo bool     `json:"visivel_catalogo"`
 }
 
-// --- SISTEMA DE FIADO E CLIENTES (AJUSTADO AOS NOMES EXATOS DO SEU CÓDIGO) ---
+// 💰 MOVIMENTO: A "gaveta" do caixa
+type Movimento struct {
+	ID        int     `json:"id"`
+	UsuarioID int     `json:"usuario_id"` 
+	Tipo      string  `json:"tipo"`       
+	Descricao string  `json:"descricao"`
+	Valor     float64 `json:"valor"`
+	DataMov   string  `json:"data_mov"`
+}
+
+// ==========================================
+// 🤝 SISTEMA DE FIADO E CLIENTES
+// ==========================================
+
+// 🧑‍🤝‍🧑 CLIENTE: A pessoa que compra na loja
 type Cliente struct {
-	ID       int    `json:"id"`
-	Nome     string `json:"nome"`
-	Telefone string `json:"telefone"`
+	ID        int    `json:"id"`
+	UsuarioID int    `json:"usuario_id"` 
+	Nome      string `json:"nome"`
+	Telefone  string `json:"telefone"`
 }
 
+// 📝 FIADO: A conta pendente do cliente
 type Fiado struct {
 	ID          int     `json:"id"`
-	ClienteID   int     `json:"cliente_id"`
-	NomeCliente string  `json:"nome_cliente"`
-	Descricao   string  `json:"descricao"`
+	UsuarioID   int     `json:"usuario_id"`
+	ClienteID   int     `json:"cliente_id"`   // 🚀 AQUI ESTÁ A PEÇA QUE FALTAVA!
+	NomeCliente string  `json:"nome_cliente"` 
 	Valor       float64 `json:"valor"`
-	DataDivida  string  `json:"data_divida"` // Consertado: Era 'Data'
-	Pago        bool    `json:"pago"`        // Consertado: Era 'Status string'
+	DataDivida  string  `json:"data_divida"`  
+	Pago        bool    `json:"pago"`         
+	Descricao   string  `json:"descricao"`
 }
 
+// 💸 BAIXA FIADO: O molde para receber o pagamento de uma conta
 type BaixaFiadoRequest struct {
-	ID    int     `json:"id"` // Consertado: Era 'FiadoID'
-	Valor float64 `json:"valor"`
+	ID    int     `json:"id"`    
+	Valor float64 `json:"valor"` 
 }

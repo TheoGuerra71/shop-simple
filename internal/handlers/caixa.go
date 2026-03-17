@@ -3,7 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/theo-guerra/simple-shop/internal/models"
 )
@@ -12,70 +14,71 @@ type CaixaHandler struct {
 	DB *sql.DB
 }
 
-type DashboardResponse struct {
-	VendasHoje     float64 `json:"vendas_hoje"`
-	VendasOntem    float64 `json:"vendas_ontem"`
-	VendasMes      float64 `json:"vendas_mes"`
-	TicketMedio    float64 `json:"ticket_medio"`
-	TotalEntradas  float64 `json:"total_entradas"`
-	TotalSaidas    float64 `json:"total_saidas"`
-	LucroLiquido   float64 `json:"lucro_liquido"`
-	PixHoje        float64 `json:"pix_hoje"`
-	CartaoHoje     float64 `json:"cartao_hoje"`
-	DinheiroHoje   float64 `json:"dinheiro_hoje"`
-	AlertasEstoque int     `json:"alertas_estoque"`
-}
-
 func (h *CaixaHandler) DashboardMobile(w http.ResponseWriter, r *http.Request) {
-	var d DashboardResponse
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE").Scan(&d.VendasHoje)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE - INTERVAL '1 day'").Scan(&d.VendasOntem)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND EXTRACT(MONTH FROM data_mov) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data_mov) = EXTRACT(YEAR FROM CURRENT_DATE)").Scan(&d.VendasMes)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE AND descricao LIKE '%[Pix]%'").Scan(&d.PixHoje)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE AND (descricao LIKE '%[Cartão]%' OR descricao LIKE '%[Crédito]%' OR descricao LIKE '%[Débito]%')").Scan(&d.CartaoHoje)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE AND descricao LIKE '%[Dinheiro]%'").Scan(&d.DinheiroHoje)
-	h.DB.QueryRow("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentos WHERE tipo = 'SAIDA' AND DATE(data_mov) = CURRENT_DATE").Scan(&d.TotalSaidas)
-
-	d.TotalEntradas = d.VendasHoje
-	d.LucroLiquido = d.TotalEntradas - d.TotalSaidas
-
-	var qtdVendas int
-	h.DB.QueryRow("SELECT COUNT(*) FROM caixa_movimentos WHERE tipo = 'ENTRADA' AND DATE(data_mov) = CURRENT_DATE").Scan(&qtdVendas)
-	if qtdVendas > 0 {
-		d.TicketMedio = d.VendasHoje / float64(qtdVendas)
-	}
-	h.DB.QueryRow("SELECT COUNT(*) FROM produtos WHERE quantidade <= estoque_minimo").Scan(&d.AlertasEstoque)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(d)
+	w.WriteHeader(http.StatusOK)
 }
 
-// 🚀 O SEGREDO DO BEZOS: Puxar os últimos 30 dias ao invés de apenas hoje!
+// 💰 LISTAR MOVIMENTOS (Com Barreira e Radar)
 func (h *CaixaHandler) ListarMovimentosHoje(w http.ResponseWriter, r *http.Request) {
-	// Puxa histórico de 30 dias para o JS processar os gráficos e extratos granulares
-	rows, err := h.DB.Query("SELECT id, tipo, descricao, valor, data_mov FROM caixa_movimentos WHERE data_mov >= CURRENT_DATE - INTERVAL '30 days' ORDER BY data_mov DESC")
+	usuarioID, ok := UsuarioIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Não autorizado", http.StatusUnauthorized)
+		return
+	}
+
+	// 🕵️ LOG DE INVESTIGAÇÃO: Vai aparecer no terminal!
+	fmt.Printf("\n🔍 Buscando dinheiro da gaveta do Lojista ID: %d\n", usuarioID)
+
+	// 🛡️ A BARREIRA DE SEGURANÇA NA QUERY: "WHERE usuario_id = $1"
+	rows, err := h.DB.Query("SELECT id, tipo, descricao, valor, data_mov FROM movimentos WHERE usuario_id = $1 ORDER BY id DESC", usuarioID)
 	if err != nil {
+		fmt.Println("❌ Erro no banco ao buscar movimentos:", err)
+		http.Error(w, "Erro ao buscar movimentos", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var movimentos []models.Movimentacao
+	var movimentos []models.Movimento
+	var totalEncontrado int
+
 	for rows.Next() {
-		var m models.Movimentacao
-		rows.Scan(&m.ID, &m.Tipo, &m.Descricao, &m.Valor, &m.DataMov)
-		movimentos = append(movimentos, m)
+		var m models.Movimento
+		var data time.Time
+		if err := rows.Scan(&m.ID, &m.Tipo, &m.Descricao, &m.Valor, &data); err == nil {
+			m.DataMov = data.Format(time.RFC3339)
+			movimentos = append(movimentos, m)
+			totalEncontrado++
+		}
 	}
-	if movimentos == nil {
-		movimentos = []models.Movimentacao{}
-	}
+
+	fmt.Printf("✅ Lojista ID %d encontrou %d transações na gaveta dele.\n", usuarioID, totalEncontrado)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movimentos)
 }
 
+// 💸 REGISTRAR MOVIMENTO (Com Radar)
 func (h *CaixaHandler) RegistrarMovimento(w http.ResponseWriter, r *http.Request) {
-	var mov models.Movimentacao
-	json.NewDecoder(r.Body).Decode(&mov)
-	h.DB.Exec("INSERT INTO caixa_movimentos (tipo, descricao, valor) VALUES ($1, $2, $3)", mov.Tipo, mov.Descricao, mov.Valor)
+	usuarioID, ok := UsuarioIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Não autorizado", http.StatusUnauthorized)
+		return
+	}
+
+	var m models.Movimento
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("💰 Lojista ID %d registrando novo movimento de R$ %.2f\n", usuarioID, m.Valor)
+
+	_, err := h.DB.Exec("INSERT INTO movimentos (usuario_id, tipo, descricao, valor) VALUES ($1, $2, $3, $4)", usuarioID, m.Tipo, m.Descricao, m.Valor)
+	if err != nil {
+		fmt.Println("❌ Erro ao salvar movimento no banco:", err)
+		http.Error(w, "Erro ao registrar o dinheiro", http.StatusInternalServerError)
+		return
+	}
+	
 	w.WriteHeader(http.StatusCreated)
 }
