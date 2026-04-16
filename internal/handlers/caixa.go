@@ -16,7 +16,72 @@ type CaixaHandler struct {
 }
 
 func (h *CaixaHandler) DashboardMobile(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	usuarioID, ok := UsuarioIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Não autorizado", http.StatusUnauthorized)
+		return
+	}
+
+	type Dashboard struct {
+		EntradasHoje  float64                  `json:"entradas_hoje"`
+		SaidasHoje    float64                  `json:"saidas_hoje"`
+		SaldoHoje     float64                  `json:"saldo_hoje"`
+		TotalProdutos int                      `json:"total_produtos"`
+		EstoqueBaixo  int                      `json:"estoque_baixo"`
+		TopProdutos   []map[string]interface{} `json:"top_produtos"`
+	}
+
+	var dash Dashboard
+
+	// Entradas e saídas de hoje
+	h.DB.QueryRow(
+		"SELECT COALESCE(SUM(valor), 0) FROM movimentos WHERE usuario_id = $1 AND tipo = 'entrada' AND data_mov::date = CURRENT_DATE",
+		usuarioID,
+	).Scan(&dash.EntradasHoje)
+
+	h.DB.QueryRow(
+		"SELECT COALESCE(SUM(valor), 0) FROM movimentos WHERE usuario_id = $1 AND tipo = 'saida' AND data_mov::date = CURRENT_DATE",
+		usuarioID,
+	).Scan(&dash.SaidasHoje)
+
+	dash.SaldoHoje = dash.EntradasHoje - dash.SaidasHoje
+
+	// Total de produtos cadastrados
+	h.DB.QueryRow("SELECT COUNT(*) FROM produtos WHERE usuario_id = $1", usuarioID).Scan(&dash.TotalProdutos)
+
+	// Produtos com estoque baixo (quantidade <= estoque_minimo)
+	h.DB.QueryRow(
+		"SELECT COUNT(*) FROM produtos WHERE usuario_id = $1 AND quantidade <= estoque_minimo",
+		usuarioID,
+	).Scan(&dash.EstoqueBaixo)
+
+	// Top 5 mais vendidos
+	rows, err := h.DB.Query(
+		"SELECT nome, preco, COALESCE(vendas_qtd, 0) FROM produtos WHERE usuario_id = $1 AND vendas_qtd > 0 ORDER BY vendas_qtd DESC LIMIT 5",
+		usuarioID,
+	)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var nome string
+			var preco float64
+			var vendas int
+			if err := rows.Scan(&nome, &preco, &vendas); err == nil {
+				dash.TopProdutos = append(dash.TopProdutos, map[string]interface{}{
+					"nome":   nome,
+					"preco":  preco,
+					"vendas": vendas,
+				})
+			}
+		}
+	}
+
+	if dash.TopProdutos == nil {
+		dash.TopProdutos = []map[string]interface{}{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(dash)
 }
 
 // 💰 LISTAR MOVIMENTOS (Com Barreira e Radar)

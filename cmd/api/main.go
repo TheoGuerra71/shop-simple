@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -35,18 +39,24 @@ func main() {
 	produtosHandler := &handlers.ProdutoHandler{DB: db}
 	lojaHandler := &handlers.LojaHandler{DB: db}
 	publicoHandler := &handlers.PublicoHandler{DB: db}
+	fiadoHandler := &handlers.FiadoHandler{DB: db}
+	relatorioHandler := &handlers.RelatorioHandler{DB: db}
 
 	r := mux.NewRouter()
 	r.Use(handlers.SecurityHeaders)
+	r.Use(handlers.CORS)
 	r.Use(handlers.RequestLogger)
+
+	// Rate limiter: 10 tentativas por minuto em endpoints de auth
+	authLimiter := handlers.NewRateLimiter(10, time.Minute)
 
 	// ==========================================
 	// ROTAS PÚBLICAS (Acesso sem Senha)
 	// ==========================================
-	r.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
-	r.HandleFunc("/auth/cadastro", authHandler.Cadastro).Methods("POST", "OPTIONS")
-	r.HandleFunc("/auth/recuperar/solicitar", authHandler.SolicitarRecuperacao).Methods("POST", "OPTIONS")
-	r.HandleFunc("/auth/recuperar/validar", authHandler.ValidarRecuperacao).Methods("POST", "OPTIONS")
+	r.HandleFunc("/auth/login", authLimiter.LimitarPorIP(authHandler.Login)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/auth/cadastro", authLimiter.LimitarPorIP(authHandler.Cadastro)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/auth/recuperar/solicitar", authLimiter.LimitarPorIP(authHandler.SolicitarRecuperacao)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/auth/recuperar/validar", authLimiter.LimitarPorIP(authHandler.ValidarRecuperacao)).Methods("POST", "OPTIONS")
 	r.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 	r.HandleFunc("/api/loja", publicoHandler.GetLojaByUrl).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/produtos/vitrine", publicoHandler.GetProdutosVitrine).Methods("GET", "OPTIONS")
@@ -70,6 +80,15 @@ func main() {
 
 	api.HandleFunc("/loja", lojaHandler.Config).Methods("GET", "POST")
 
+	api.HandleFunc("/clientes", fiadoHandler.ListarClientes).Methods("GET")
+	api.HandleFunc("/clientes/novo", fiadoHandler.CadastrarCliente).Methods("POST")
+	api.HandleFunc("/fiados", fiadoHandler.ListarFiados).Methods("GET")
+	api.HandleFunc("/fiados/novo", fiadoHandler.NovoFiado).Methods("POST")
+	api.HandleFunc("/fiados/pagar", fiadoHandler.DarBaixa).Methods("POST")
+
+	api.HandleFunc("/relatorios/top", relatorioHandler.TopProdutos).Methods("GET")
+	api.HandleFunc("/relatorios/extrato", relatorioHandler.ExtratoCompleto).Methods("GET")
+
 	// ==========================================
 	// 💎 ROTEADOR DE VANITY URL
 	// ==========================================
@@ -87,9 +106,35 @@ func main() {
 		http.ServeFile(w, r, "./static/catalogo.html")
 	})
 
-	slog.Info("ERP Operacional", "porta", cfg.Port, "ambiente", cfg.AppEnv)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		slog.Error("Servidor encerrado", "erro", err)
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Inicia o servidor em goroutine separada
+	go func() {
+		slog.Info("ERP Operacional", "porta", cfg.Port, "ambiente", cfg.AppEnv)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Erro no servidor", "erro", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Graceful shutdown: espera SIGINT/SIGTERM e drena requests em andamento
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Desligando servidor...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Erro ao desligar servidor", "erro", err)
 		os.Exit(1)
 	}
+	slog.Info("Servidor encerrado com sucesso")
 }
