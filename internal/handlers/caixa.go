@@ -3,8 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/theo-guerra/simple-shop/internal/models"
@@ -26,32 +27,41 @@ func (h *CaixaHandler) ListarMovimentosHoje(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 🕵️ LOG DE INVESTIGAÇÃO: Vai aparecer no terminal!
-	fmt.Printf("\n🔍 Buscando dinheiro da gaveta do Lojista ID: %d\n", usuarioID)
+	// Paginação: ?limite=50&pagina=1 (padrão: 50 por página)
+	limite := 50
+	pagina := 1
+	if l, err := strconv.Atoi(r.URL.Query().Get("limite")); err == nil && l > 0 && l <= 200 {
+		limite = l
+	}
+	if p, err := strconv.Atoi(r.URL.Query().Get("pagina")); err == nil && p > 0 {
+		pagina = p
+	}
+	offset := (pagina - 1) * limite
 
-	// 🛡️ A BARREIRA DE SEGURANÇA NA QUERY: "WHERE usuario_id = $1"
-	rows, err := h.DB.Query("SELECT id, tipo, descricao, valor, data_mov FROM movimentos WHERE usuario_id = $1 ORDER BY id DESC", usuarioID)
+	rows, err := h.DB.Query(
+		"SELECT id, tipo, descricao, valor, data_mov FROM movimentos WHERE usuario_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3",
+		usuarioID, limite, offset,
+	)
 	if err != nil {
-		fmt.Println("❌ Erro no banco ao buscar movimentos:", err)
+		slog.Error("Erro ao buscar movimentos", "usuario_id", usuarioID, "erro", err)
 		http.Error(w, "Erro ao buscar movimentos", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
 	var movimentos []models.Movimento
-	var totalEncontrado int
-
 	for rows.Next() {
 		var m models.Movimento
 		var data time.Time
 		if err := rows.Scan(&m.ID, &m.Tipo, &m.Descricao, &m.Valor, &data); err == nil {
 			m.DataMov = data.Format(time.RFC3339)
 			movimentos = append(movimentos, m)
-			totalEncontrado++
 		}
 	}
 
-	fmt.Printf("✅ Lojista ID %d encontrou %d transações na gaveta dele.\n", usuarioID, totalEncontrado)
+	if movimentos == nil {
+		movimentos = []models.Movimento{}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(movimentos)
@@ -71,11 +81,18 @@ func (h *CaixaHandler) RegistrarMovimento(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Printf("💰 Lojista ID %d registrando novo movimento de R$ %.2f\n", usuarioID, m.Valor)
+	if m.Tipo != "entrada" && m.Tipo != "saida" {
+		http.Error(w, "Tipo deve ser 'entrada' ou 'saida'", http.StatusBadRequest)
+		return
+	}
+	if m.Valor <= 0 {
+		http.Error(w, "Valor deve ser maior que zero", http.StatusBadRequest)
+		return
+	}
 
 	_, err := h.DB.Exec("INSERT INTO movimentos (usuario_id, tipo, descricao, valor) VALUES ($1, $2, $3, $4)", usuarioID, m.Tipo, m.Descricao, m.Valor)
 	if err != nil {
-		fmt.Println("❌ Erro ao salvar movimento no banco:", err)
+		slog.Error("Erro ao registrar movimento", "usuario_id", usuarioID, "erro", err)
 		http.Error(w, "Erro ao registrar o dinheiro", http.StatusInternalServerError)
 		return
 	}

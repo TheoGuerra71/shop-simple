@@ -25,7 +25,9 @@ func (h *RelatorioHandler) TopProdutos(w http.ResponseWriter, r *http.Request) {
 		var nome string
 		var preco float64
 		var vendas int
-		rows.Scan(&nome, &preco, &vendas)
+		if err := rows.Scan(&nome, &preco, &vendas); err != nil {
+			continue
+		}
 
 		ranking = append(ranking, map[string]interface{}{
 			"nome":             nome,
@@ -53,7 +55,9 @@ func (h *RelatorioHandler) ExtratoCompleto(w http.ResponseWriter, r *http.Reques
 		var id int
 		var tipo, desc, data string
 		var valor float64
-		rows.Scan(&id, &tipo, &desc, &valor, &data)
+		if err := rows.Scan(&id, &tipo, &desc, &valor, &data); err != nil {
+			continue
+		}
 
 		extrato = append(extrato, map[string]interface{}{
 			"id": id, "tipo": tipo, "descricao": desc, "valor": valor, "data": data,

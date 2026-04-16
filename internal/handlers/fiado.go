@@ -51,7 +51,9 @@ func (h *FiadoHandler) ListarFiados(w http.ResponseWriter, r *http.Request) {
 	var fiados []models.Fiado
 	for rows.Next() {
 		var f models.Fiado
-		rows.Scan(&f.ID, &f.ClienteID, &f.NomeCliente, &f.Valor, &f.Descricao, &f.DataDivida, &f.Pago)
+		if err := rows.Scan(&f.ID, &f.ClienteID, &f.NomeCliente, &f.Valor, &f.Descricao, &f.DataDivida, &f.Pago); err != nil {
+			continue
+		}
 		fiados = append(fiados, f)
 	}
 

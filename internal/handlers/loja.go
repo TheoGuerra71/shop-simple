@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -65,7 +66,8 @@ func (h *LojaHandler) Config(w http.ResponseWriter, r *http.Request) {
 			usuarioID, req.NomeLoja, req.Whatsapp, req.Instagram, req.CorHex, req.MsgSuporte,
 		)
 		if err != nil {
-			http.Error(w, "Erro ao salvar: "+err.Error(), http.StatusInternalServerError)
+			slog.Error("Erro ao salvar config da loja", "usuario_id", usuarioID, "erro", err)
+			http.Error(w, "Erro ao salvar configuração", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

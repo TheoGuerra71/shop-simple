@@ -3,7 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -53,7 +53,7 @@ func (h *PublicoHandler) GetProdutosVitrine(w http.ResponseWriter, r *http.Reque
 	`, usuarioID)
 	
 	if err != nil {
-		fmt.Printf("❌ Erro no banco: %v\n", err)
+		slog.Error("Erro ao buscar produtos da vitrine", "erro", err)
 		http.Error(w, "Erro ao buscar produtos", http.StatusInternalServerError)
 		return
 	}

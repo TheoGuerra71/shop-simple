@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"time"
@@ -23,12 +24,25 @@ const CtxKeyUsuarioID contextKey = "usuario_id"
 // Memória temporária para guardar os códigos de recuperação (Simulando uma tabela de tokens)
 var codigosRecuperacao = make(map[string]string)
 
+// jwtKey é configurada em tempo de inicialização via SetJWTSecret
+var jwtKey []byte
+
+// isProduction controla flags de segurança (cookie Secure, etc.)
+var isProduction bool
+
+// SetJWTSecret configura a chave JWT a partir do config (chamado no main)
+func SetJWTSecret(secret string) {
+	jwtKey = []byte(secret)
+}
+
+// SetProduction configura o modo de produção
+func SetProduction(prod bool) {
+	isProduction = prod
+}
+
 type AuthHandler struct {
 	DB *sql.DB
 }
-
-// Chave secreta para assinatura dos tokens JWT
-var jwtKey = []byte("sua_chave_secreta_boutique_2026")
 
 // Claims: O conteúdo do nosso Token JWT
 type Claims struct {
@@ -78,6 +92,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if msg := validarEmail(creds.Email); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+	if creds.Senha == "" {
+		http.Error(w, "Senha é obrigatória", http.StatusBadRequest)
+		return
+	}
+
 	var usuarioID int
 	var senhaHash string
 
@@ -107,7 +130,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    tokenString,
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
-		Secure:   false, // Em produção (HTTPS), mudar para true
+		Secure:   isProduction,
 		Path:     "/",
 		SameSite: http.SameSiteStrictMode,
 	})
@@ -121,6 +144,15 @@ func (h *AuthHandler) Cadastro(w http.ResponseWriter, r *http.Request) {
 	var creds models.Usuario
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
+
+	if msg := validarEmail(creds.Email); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+	if msg := validarSenha(creds.Senha); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
@@ -165,7 +197,10 @@ func (h *AuthHandler) SolicitarRecuperacao(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		Email string `json:"email"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
 
 	var id int
 	err := h.DB.QueryRow("SELECT id FROM usuarios WHERE email = $1", req.Email).Scan(&id)
@@ -177,8 +212,8 @@ func (h *AuthHandler) SolicitarRecuperacao(w http.ResponseWriter, r *http.Reques
 	codigo := gerarCodigoPIN()
 	codigosRecuperacao[req.Email] = codigo
 
-	// Simulação de envio por e-mail no console
-	fmt.Printf("\n[EMAIL SIMULADO] Para: %s | Código: %s\n", req.Email, codigo)
+	// Simulação de envio por e-mail (trocar por serviço real em produção)
+	slog.Info("Código de recuperação gerado", "email", req.Email, "codigo", codigo)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -189,7 +224,10 @@ func (h *AuthHandler) ValidarRecuperacao(w http.ResponseWriter, r *http.Request)
 		Codigo    string `json:"codigo"`
 		NovaSenha string `json:"nova_senha"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
 
 	codigoSalvo, existe := codigosRecuperacao[req.Email]
 	if !existe || codigoSalvo != req.Codigo {

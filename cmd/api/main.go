@@ -1,21 +1,32 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/gorilla/mux"
 
+	"github.com/theo-guerra/simple-shop/internal/config"
 	"github.com/theo-guerra/simple-shop/internal/database"
 	"github.com/theo-guerra/simple-shop/internal/handlers"
 )
 
 func main() {
-	db, err := database.Conectar("user=postgres password=admin dbname=simple_shop host=localhost sslmode=disable")
+	cfg, err := config.Carregar()
 	if err != nil {
-		log.Fatal("Erro ao conectar no banco:", err)
+		slog.Error("Erro ao carregar configuração", "erro", err)
+		os.Exit(1)
+	}
+
+	handlers.SetJWTSecret(cfg.JWTSecret)
+	handlers.SetProduction(cfg.IsProduction())
+
+	db, err := database.Conectar(cfg.DSN())
+	if err != nil {
+		slog.Error("Erro ao conectar no banco", "erro", err)
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -26,9 +37,11 @@ func main() {
 	publicoHandler := &handlers.PublicoHandler{DB: db}
 
 	r := mux.NewRouter()
+	r.Use(handlers.SecurityHeaders)
+	r.Use(handlers.RequestLogger)
 
 	// ==========================================
-	// 🔓 ROTAS PÚBLICAS (Acesso sem Senha)
+	// ROTAS PÚBLICAS (Acesso sem Senha)
 	// ==========================================
 	r.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
 	r.HandleFunc("/auth/cadastro", authHandler.Cadastro).Methods("POST", "OPTIONS")
@@ -74,6 +87,9 @@ func main() {
 		http.ServeFile(w, r, "./static/catalogo.html")
 	})
 
-	log.Println("🚀 ERP Operacional na porta 7000...")
-	log.Fatal(http.ListenAndServe(":7000", r))
+	slog.Info("ERP Operacional", "porta", cfg.Port, "ambiente", cfg.AppEnv)
+	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
+		slog.Error("Servidor encerrado", "erro", err)
+		os.Exit(1)
+	}
 }

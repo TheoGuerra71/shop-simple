@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -56,7 +57,8 @@ func (h *ProdutoHandler) ListarProdutos(w http.ResponseWriter, r *http.Request) 
 		usuarioID,
 	)
 	if err != nil {
-		http.Error(w, "Erro ao buscar produtos: "+err.Error(), http.StatusInternalServerError)
+		slog.Error("Erro ao buscar produtos", "usuario_id", usuarioID, "erro", err)
+		http.Error(w, "Erro ao buscar produtos", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -104,7 +106,8 @@ func (h *ProdutoHandler) ListarProdutosPublico(w http.ResponseWriter, r *http.Re
 		usuarioID,
 	)
 	if err != nil {
-		http.Error(w, "Erro ao buscar vitrine: "+err.Error(), http.StatusInternalServerError)
+		slog.Error("Erro ao buscar vitrine", "usuario_id", usuarioID, "erro", err)
+		http.Error(w, "Erro ao buscar vitrine", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -142,6 +145,19 @@ func (h *ProdutoHandler) Criar(w http.ResponseWriter, r *http.Request) {
 	var p models.ProdutoApp
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
+
+	if msg := validarCampoObrigatorio(p.Nome, "nome"); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+	if p.PrecoVenda < 0 {
+		http.Error(w, "Preço não pode ser negativo", http.StatusBadRequest)
+		return
+	}
+	if p.Quantidade < 0 {
+		http.Error(w, "Quantidade não pode ser negativa", http.StatusBadRequest)
 		return
 	}
 
@@ -209,7 +225,10 @@ func (h *ProdutoHandler) Deletar(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID int `json:"id"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
 
 	_, err := h.DB.Exec("DELETE FROM produtos WHERE id = $1 AND usuario_id = $2", req.ID, usuarioID)
 	if err != nil {
@@ -233,7 +252,10 @@ func (h *ProdutoHandler) Repor(w http.ResponseWriter, r *http.Request) {
 		Quantidade int     `json:"quantidade"`
 		CustoTotal float64 `json:"custo_total"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
 
 	if req.Quantidade <= 0 {
 		http.Error(w, "Quantidade deve ser maior que zero", http.StatusBadRequest)
@@ -271,7 +293,10 @@ func (h *ProdutoHandler) Vender(w http.ResponseWriter, r *http.Request) {
 		ID         int `json:"id"`
 		Quantidade int `json:"quantidade"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
 
 	var qtdAtual int
 	var preco float64

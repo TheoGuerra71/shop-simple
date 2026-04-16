@@ -5,3 +5,6 @@ simple-shop
 # Pastas do SO
 .DS_Store
 .vscode/
+
+# Variáveis de ambiente (NUNCA commitar)
+.env
